@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentStatus {
+  IDEA
+  SCHEDULED
+  PUBLISHED
+}
+
+enum Platform {
+  YOUTUBE
+  INSTAGRAM
+  TIKTOK
+  TWITTER
+  LINKEDIN
+  OTHER
+}
+
+model ContentItem {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  platform    Platform
+  contentType String
+  status      ContentStatus @default(IDEA)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  notes       String?
+
+  views       Int?
+  likes       Int?
+  comments    Int?
+  shares      Int?
+  saves       Int?
+  hoursSpent  Float?
+  revenue     Float?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
