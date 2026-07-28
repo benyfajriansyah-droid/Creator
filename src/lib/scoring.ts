@@ -1,4 +1,4 @@
-import type { ContentItem } from "@/generated/prisma/client";
+import type { ContentItem } from "@prisma/client";
 
 export type Verdict = "WORTH_IT" | "AVERAGE" | "NOT_WORTH_IT" | "NO_DATA";
 

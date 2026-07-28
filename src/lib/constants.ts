@@ -1,4 +1,4 @@
-import type { ContentStatus, Platform } from "@/generated/prisma/client";
+import type { ContentStatus, Platform } from "@prisma/client";
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
   YOUTUBE: "YouTube",

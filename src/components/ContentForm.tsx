@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ContentItem } from "@/generated/prisma/client";
+import type { ContentItem } from "@prisma/client";
 import { PLATFORMS, PLATFORM_LABEL, STATUSES, STATUS_LABEL, toDatetimeLocalValue } from "@/lib/constants";
 
 const CONTENT_TYPES = ["Video", "Short/Reel", "Post", "Carousel", "Livestream", "Artikel", "Lainnya"];

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import type { ContentStatus, Platform } from "@/generated/prisma/client";
+import type { ContentStatus, Platform } from "@prisma/client";
 
 function str(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ContentItem } from "@/generated/prisma/client";
+import type { ContentItem } from "@prisma/client";
 import { toDatetimeLocalValue } from "@/lib/constants";
 
 const fields: { name: keyof ContentItem; label: string; step?: string }[] = [
