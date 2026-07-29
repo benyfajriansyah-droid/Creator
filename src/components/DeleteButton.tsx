@@ -1,20 +1,25 @@
 "use client";
 
-export default function DeleteButton({ action }: { action: () => void }) {
+import { buttonStyles } from "@/components/ui";
+
+export default function DeleteButton({
+  action,
+  label = "Hapus",
+  confirmMessage = "Hapus konten ini? Tindakan ini tidak bisa dibatalkan.",
+}: {
+  action: () => void;
+  label?: string;
+  confirmMessage?: string;
+}) {
   return (
     <form
       action={action}
-      onSubmit={(e) => {
-        if (!confirm("Hapus konten ini? Tindakan tidak bisa dibatalkan.")) {
-          e.preventDefault();
-        }
+      onSubmit={(event) => {
+        if (!confirm(confirmMessage)) event.preventDefault();
       }}
     >
-      <button
-        type="submit"
-        className="shrink-0 rounded-lg border border-zinc-800 px-3 py-2 text-xs text-zinc-400 hover:border-rose-500/50 hover:text-rose-400"
-      >
-        Hapus
+      <button type="submit" className={buttonStyles.danger}>
+        {label}
       </button>
     </form>
   );

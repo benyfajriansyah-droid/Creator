@@ -13,6 +13,8 @@ datasource db {
 
 enum ContentStatus {
   IDEA
+  DRAFT
+  READY
   SCHEDULED
   PUBLISHED
 }
@@ -23,28 +25,147 @@ enum Platform {
   TIKTOK
   TWITTER
   LINKEDIN
+  FACEBOOK
   OTHER
 }
 
+enum NotificationKind {
+  CONTENT_SAVED
+  CONTENT_SCHEDULED
+  SCHEDULE_REMINDER
+  DAILY_DIGEST
+  METRICS_REMINDER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  timeZone     String   @default("Asia/Jakarta")
+
+  /// Minutes before a scheduled slot to fire the reminder push.
+  reminderLeadMinutes Int     @default(60)
+  dailyDigestEnabled  Boolean @default(true)
+  /// Hour of day (0-23, in the user's time zone) to send the daily digest.
+  dailyDigestHour     Int     @default(7)
+
+  accounts      SocialAccount[]
+  contentItems  ContentItem[]
+  subscriptions PushSubscription[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SocialAccount {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label    String
+  handle   String?
+  platform Platform
+  /// Hex colour used to tint this account across calendar and board views.
+  color    String   @default("#6366f1")
+  archived Boolean  @default(false)
+
+  contentItems ContentItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model ContentItem {
-  id          String        @id @default(cuid())
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId String?
+  account   SocialAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
   title       String
+  hook        String?
   description String?
   platform    Platform
   contentType String
   status      ContentStatus @default(IDEA)
+  tags        String[]      @default([])
+
   scheduledAt DateTime?
   publishedAt DateTime?
+  postUrl     String?
   notes       String?
 
-  views       Int?
-  likes       Int?
-  comments    Int?
-  shares      Int?
-  saves       Int?
-  hoursSpent  Float?
-  revenue     Float?
+  views      Int?
+  likes      Int?
+  comments   Int?
+  shares     Int?
+  saves      Int?
+  hoursSpent Float?
+  revenue    Float?
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  /// Set once the pre-publish reminder push has gone out, so it only fires once.
+  reminderSentAt DateTime?
+
+  checklist ChecklistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, scheduledAt])
+  @@index([accountId])
+}
+
+model ChecklistItem {
+  id        String      @id @default(cuid())
+  contentId String
+  content   ContentItem @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  label     String
+  done      Boolean     @default(false)
+  position  Int         @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([contentId])
+}
+
+model PushSubscription {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Notification {
+  id     String           @id @default(cuid())
+  userId String
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind   NotificationKind
+  title  String
+  body   String
+  href   String?
+  read   Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+/// Server-side secrets (session signing key, VAPID key pair) generated on first
+/// use so the app works without any manual environment variable setup.
+model AppSecret {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
 }

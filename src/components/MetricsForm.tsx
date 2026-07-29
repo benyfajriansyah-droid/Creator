@@ -1,62 +1,91 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
 import type { ContentItem } from "@prisma/client";
+import { Field, buttonStyles, inputStyles } from "@/components/ui";
 import { toDatetimeLocalValue } from "@/lib/constants";
 
-const fields: { name: keyof ContentItem; label: string; step?: string }[] = [
-  { name: "views", label: "Views / Impressions" },
+const FIELDS: { name: keyof ContentItem; label: string; step?: string }[] = [
+  { name: "views", label: "Views" },
   { name: "likes", label: "Likes" },
   { name: "comments", label: "Komentar" },
   { name: "shares", label: "Shares" },
   { name: "saves", label: "Saves" },
-  { name: "hoursSpent", label: "Jam Dikerjakan", step: "0.5" },
-  { name: "revenue", label: "Revenue (Rp)", step: "1000" },
+  { name: "hoursSpent", label: "Jam dikerjakan", step: "0.5" },
 ];
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={buttonStyles.primary}>
+      {pending ? "Menyimpan…" : "Simpan Performa"}
+    </button>
+  );
+}
 
 export default function MetricsForm({
   item,
   action,
+  timeZone,
 }: {
   item: ContentItem;
   action: (formData: FormData) => void;
+  timeZone: string;
 }) {
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium text-zinc-300">Tanggal Tayang</label>
+    <form action={action} className="space-y-4">
+      <Field label="Tanggal tayang">
         <input
           type="datetime-local"
           name="publishedAt"
-          defaultValue={toDatetimeLocalValue(item.publishedAt ?? new Date())}
-          className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+          defaultValue={toDatetimeLocalValue(item.publishedAt ?? new Date(), timeZone)}
+          className={inputStyles}
         />
-      </div>
+      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        {fields.map((f) => (
-          <div key={f.name}>
-            <label className="mb-1 block text-sm font-medium text-zinc-300">{f.label}</label>
+      <Field label="Link postingan">
+        <input
+          type="url"
+          name="postUrl"
+          defaultValue={item.postUrl ?? ""}
+          placeholder="https://…"
+          className={inputStyles}
+        />
+      </Field>
+
+      <div className="grid grid-cols-2 gap-3">
+        {FIELDS.map((field) => (
+          <Field key={field.name} label={field.label}>
             <input
               type="number"
-              step={f.step ?? "1"}
+              inputMode="decimal"
               min={0}
-              name={f.name}
-              defaultValue={(item[f.name] as number | null) ?? ""}
+              step={field.step ?? "1"}
+              name={field.name}
+              defaultValue={(item[field.name] as number | null) ?? ""}
               placeholder="0"
-              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+              className={inputStyles}
             />
-          </div>
+          </Field>
         ))}
       </div>
 
-      <button
-        type="submit"
-        className="mt-2 w-full rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-200 sm:w-fit"
-      >
-        Simpan Performa
-      </button>
-      <p className="text-xs text-zinc-500">
-        Menyimpan ini otomatis menandai konten sebagai &quot;Tayang&quot;.
+      <Field label="Revenue (Rp)" hint="Pemasukan langsung dari konten ini, kalau ada.">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          step="1000"
+          name="revenue"
+          defaultValue={item.revenue ?? ""}
+          placeholder="0"
+          className={inputStyles}
+        />
+      </Field>
+
+      <SubmitButton />
+      <p className="text-xs text-[var(--text-muted)]">
+        Menyimpan ini otomatis menandai konten sebagai sudah tayang.
       </p>
     </form>
   );

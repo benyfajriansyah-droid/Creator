@@ -1,19 +1,143 @@
 @import "tailwindcss";
 
+/* Dark mode is driven by a class on <html>, not the OS preference. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+/*
+ * Light is the default. `.dark` on <html> flips the palette; the class is set
+ * before paint by an inline script in the root layout so there is no flash.
+ */
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f2f4f7;
+  --border: #e3e6ea;
+  --border-strong: #cfd4da;
+  --text: #14161a;
+  --text-muted: #666e7a;
+  --text-subtle: #8b939f;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-soft: #eef0fe;
+  --accent-text: #ffffff;
+  --ring: #a5b4fc;
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 4px 6px -2px rgb(16 24 40 / 0.04), 0 12px 16px -4px rgb(16 24 40 / 0.08);
+
+  --success: #067647;
+  --success-bg: #ecfdf3;
+  --success-border: #abefc6;
+  --warning: #b54708;
+  --warning-bg: #fffaeb;
+  --warning-border: #fedf89;
+  --danger: #b42318;
+  --danger-bg: #fef3f2;
+  --danger-border: #fecdca;
+  --info: #175cd3;
+  --info-bg: #eff8ff;
+  --info-border: #b2ddff;
+  --neutral: #475467;
+  --neutral-bg: #f2f4f7;
+  --neutral-border: #e3e6ea;
+}
+
+.dark {
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-muted: #1e222b;
+  --border: #282d38;
+  --border-strong: #39404d;
+  --text: #f0f2f5;
+  --text-muted: #9aa3b2;
+  --text-subtle: #6f7889;
+  --accent: #7c74f0;
+  --accent-hover: #8f88f5;
+  --accent-soft: #232235;
+  --accent-text: #0f1115;
+  --ring: #4c46a8;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 24px -8px rgb(0 0 0 / 0.5);
+
+  --success: #75e0a7;
+  --success-bg: #0d2a1c;
+  --success-border: #1a4d33;
+  --warning: #fec84b;
+  --warning-bg: #2e2007;
+  --warning-border: #5c4213;
+  --danger: #fda29b;
+  --danger-bg: #2f1413;
+  --danger-border: #5c2422;
+  --info: #84caff;
+  --info-bg: #0d2436;
+  --info-border: #1a4468;
+  --neutral: #9aa3b2;
+  --neutral-bg: #1e222b;
+  --neutral-border: #282d38;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border-base: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--bg);
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Respect the safe area on notched phones when installed as a PWA. */
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in {
+    animation: none;
+  }
 }
