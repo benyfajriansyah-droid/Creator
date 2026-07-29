@@ -80,8 +80,14 @@ export async function POST(request: Request) {
         },
       },
       system: [
-        { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-        { type: "text", text: `Data creator saat ini:\n\n${context}` },
+        { type: "text", text: SYSTEM_PROMPT },
+        // Breakpoint on the last block so system + context cache together —
+        // the prompt alone sits under the model's minimum cacheable prefix.
+        {
+          type: "text",
+          text: `Data creator saat ini:\n\n${context}`,
+          cache_control: { type: "ephemeral" },
+        },
       ],
       messages: [{ role: "user", content: buildPrompt(mode, brief, count) }],
     });

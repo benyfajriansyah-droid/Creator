@@ -74,8 +74,14 @@ export async function POST(request: Request) {
     fallbacks: "default",
     output_config: { effort: AI_EFFORT },
     system: [
-      { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-      { type: "text", text: `Data creator saat ini:\n\n${context}` },
+      { type: "text", text: SYSTEM_PROMPT },
+      // Breakpoint on the last block so system + context cache together —
+      // the prompt alone sits under the model's minimum cacheable prefix.
+      {
+        type: "text",
+        text: `Data creator saat ini:\n\n${context}`,
+        cache_control: { type: "ephemeral" },
+      },
     ],
     messages: [
       ...history.map((m) => ({
