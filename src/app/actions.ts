@@ -344,3 +344,64 @@ export async function markNotificationsRead() {
   revalidatePath("/notifications");
   revalidatePath("/");
 }
+
+/**
+ * Turns an AI-generated idea into a real content item, so a good suggestion
+ * lands in the pipeline instead of being copied out by hand.
+ */
+export async function saveIdeaAsContent(input: {
+  title: string;
+  hook?: string;
+  angle?: string;
+  outline?: string[];
+  tags?: string[];
+  format?: string;
+  accountId?: string | null;
+}) {
+  const user = await requireUser();
+  const title = input.title.trim();
+  if (!title) throw new Error("Judul konten wajib diisi");
+
+  const accountId = await resolveAccountId(user.id, input.accountId ?? null);
+  const account = accountId
+    ? await prisma.socialAccount.findUnique({
+        where: { id: accountId },
+        select: { platform: true },
+      })
+    : null;
+
+  const description = [
+    input.angle ? `Sudut pandang: ${input.angle}` : null,
+    input.outline?.length ? `Outline:\n${input.outline.map((s) => `- ${s}`).join("\n")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const item = await prisma.contentItem.create({
+    data: {
+      userId: user.id,
+      accountId,
+      title,
+      hook: input.hook?.trim() || null,
+      description: description || null,
+      platform: account?.platform ?? "INSTAGRAM",
+      contentType: input.format?.trim() || "Lainnya",
+      status: "IDEA",
+      tags: (input.tags ?? []).map((t) => t.trim().replace(/^#/, "")).filter(Boolean).slice(0, 12),
+      notes: "Dibuat dari saran AI.",
+      checklist: {
+        create: DEFAULT_CHECKLIST.map((label, position) => ({ label, position })),
+      },
+    },
+    select: { id: true },
+  });
+
+  revalidateAll(item.id);
+  return { id: item.id };
+}
+
+export async function deleteAiThread(threadId: string) {
+  const user = await requireUser();
+  await prisma.aiThread.deleteMany({ where: { id: threadId, userId: user.id } });
+  revalidatePath("/ai");
+}

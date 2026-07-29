@@ -7,7 +7,9 @@ import ContentForm from "@/components/ContentForm";
 import MetricsForm from "@/components/MetricsForm";
 import Checklist from "@/components/Checklist";
 import DeleteButton from "@/components/DeleteButton";
+import ContentAssist from "@/components/ai/ContentAssist";
 import { VerdictBadge, AccountDot } from "@/components/ContentCard";
+import { isAiConfigured } from "@/lib/ai";
 import { Badge, Card, SectionHeading } from "@/components/ui";
 import {
   PLATFORM_LABEL,
@@ -117,6 +119,20 @@ export default async function ContentDetailPage({
         </div>
 
         <div className="space-y-6">
+          <section>
+            <SectionHeading
+              title="Bantuan AI"
+              description="Hook, script, dan caption untuk konten ini."
+            />
+            <Card className="p-4">
+              <ContentAssist
+                contentId={item.id}
+                configured={isAiConfigured()}
+                isPublished={item.status === "PUBLISHED"}
+              />
+            </Card>
+          </section>
+
           <section>
             <SectionHeading
               title="Checklist produksi"

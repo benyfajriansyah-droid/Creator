@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/board", label: "Papan", icon: <ColumnsIcon /> },
   { href: "/calendar", label: "Kalender", icon: <CalendarIcon /> },
   { href: "/content", label: "Konten", icon: <ListIcon /> },
+  { href: "/ai", label: "AI", icon: <SparkIcon /> },
   { href: "/insights", label: "Insight", icon: <ChartIcon /> },
 ];
 
@@ -246,6 +247,14 @@ function ListIcon() {
   return (
     <svg {...iconProps}>
       <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+    </svg>
+  );
+}
+function SparkIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3Z" />
+      <path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z" />
     </svg>
   );
 }

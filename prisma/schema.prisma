@@ -54,6 +54,7 @@ model User {
   contentItems  ContentItem[]
   subscriptions PushSubscription[]
   notifications Notification[]
+  aiThreads     AiThread[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,4 +169,36 @@ model AppSecret {
   key       String   @id
   value     String
   createdAt DateTime @default(now())
+}
+
+enum AiRole {
+  USER
+  ASSISTANT
+}
+
+/// A saved conversation with the AI assistant.
+model AiThread {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title  String
+
+  messages AiMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model AiMessage {
+  id       String   @id @default(cuid())
+  threadId String
+  thread   AiThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role     AiRole
+  content  String
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
 }
