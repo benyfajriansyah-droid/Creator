@@ -11,7 +11,9 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: env("DATABASE_URL"),
+    // DATABASE_URL (pooled, via PgBouncer) was unreachable at runtime;
+    // DATABASE_URL_UNPOOLED is confirmed working — see prisma/schema.prisma.
+    url: env("DATABASE_URL_UNPOOLED"),
     directUrl: env("DIRECT_URL"),
   },
 });

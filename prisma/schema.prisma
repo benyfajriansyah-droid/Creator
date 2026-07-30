@@ -8,7 +8,12 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  // Using the unpooled connection here too — the pooled endpoint
+  // (DATABASE_URL, through PgBouncer) was unreachable at runtime
+  // (PrismaClientInitializationError: "Can't reach database server").
+  // The unpooled endpoint is confirmed working (migrate deploy uses it
+  // via DIRECT_URL successfully).
+  url       = env("DATABASE_URL_UNPOOLED")
   // Migrations need a direct (non-pooled) connection — Neon's pooled URL
   // goes through PgBouncer, which doesn't support the session-level advisory
   // lock `prisma migrate deploy` takes, and times out with error P1002.
