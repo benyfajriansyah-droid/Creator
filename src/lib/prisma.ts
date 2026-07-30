@@ -1,4 +1,12 @@
+import dns from "node:dns";
 import { PrismaClient } from "@prisma/client";
+
+// Node resolves DNS in whatever order the OS returns by default, which can
+// hand back an IPv6 address for the Neon host. Vercel's function runtime has
+// no IPv6 route out, so a connection attempt to that address fails
+// immediately (not a timeout) with "Can't reach database server". Prefer
+// IPv4 so we don't even try the unreachable address.
+dns.setDefaultResultOrder("ipv4first");
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
