@@ -1,31 +1,35 @@
 import dns from "node:dns";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-// Node resolves DNS in whatever order the OS returns by default, which can
-// hand back an IPv6 address for the Neon host. Vercel's function runtime has
-// no IPv6 route out, so a connection attempt to that address fails
-// immediately (not a timeout) with "Can't reach database server". Prefer
-// IPv4 so we don't even try the unreachable address.
+// Confirmed via a raw TCP diagnostic: Prisma's classic query engine (Rust)
+// resolves and connects to the datasource host using its own network stack,
+// not Node's dns/net — so Node-level DNS preferences like this have no
+// effect on it. It's kept here anyway for anything else in the process that
+// does go through Node's resolver.
 dns.setDefaultResultOrder("ipv4first");
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Neon's free-tier compute suspends when idle and has to wake up on the
-// next connection, which can take longer than Prisma's default connect
-// timeout — that showed up as PrismaClientInitializationError ("Can't
-// reach database server") on cold requests. Give it more time to wake up.
-function withConnectTimeout(url: string, seconds: number): string {
-  const withTimeout = new URL(url);
-  withTimeout.searchParams.set("connect_timeout", String(seconds));
-  return withTimeout.toString();
-}
-
-const datasourceUrl = process.env.DATABASE_URL_UNPOOLED
-  ? withConnectTimeout(process.env.DATABASE_URL_UNPOOLED, 30)
+// The Neon host resolves to both IPv4 and IPv6 addresses. Vercel's
+// serverless runtime has no outbound IPv6 route, and Prisma's classic
+// engine was failing instantly (~100-200ms, not a timeout) trying an IPv6
+// address — surfaced as PrismaClientInitializationError ("Can't reach
+// database server"). Raw IPv4 connects in 2-6ms, so the fix is to stop
+// using the Rust engine's own resolver: the `pg` driver adapter connects
+// through Node's net/dns instead, which respects ipv4first above.
+const connectionString = process.env.DATABASE_URL_UNPOOLED
+  ? (() => {
+      const url = new URL(process.env.DATABASE_URL_UNPOOLED!);
+      url.searchParams.set("connect_timeout", "30");
+      return url.toString();
+    })()
   : undefined;
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ datasourceUrl });
+const adapter = connectionString ? new PrismaPg({ connectionString }) : undefined;
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
