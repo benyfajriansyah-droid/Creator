@@ -30,10 +30,12 @@ export function Sidebar({
   user,
   unreadCount,
   logoutAction,
+  showAdmin = false,
 }: {
   user: NavUser;
   unreadCount: number;
   logoutAction: () => Promise<void>;
+  showAdmin?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -67,6 +69,14 @@ export function Sidebar({
         {SECONDARY.map((link) => (
           <NavItem key={link.href} {...link} active={isActive(pathname, link.href)} />
         ))}
+        {showAdmin && (
+          <NavItem
+            href="/admin/orders"
+            label="Konfirmasi Bayar"
+            icon={<CardIcon />}
+            active={isActive(pathname, "/admin/orders")}
+          />
+        )}
       </nav>
 
       <div className="mt-auto space-y-3 pt-4">

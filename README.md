@@ -68,6 +68,8 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
 | `MAYAR_API_KEY` | Mengaktifkan plan berbayar (Pro/Studio) lewat [Mayar](https://mayar.id). Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
 | `MAYAR_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook Mayar (`/api/billing/webhook/mayar?token=...`) supaya endpoint itu cuma menerima notifikasi asli dari Mayar. |
+| `MANUAL_PAYMENT_GOPAY_NUMBER` | Alternatif Mayar — nomor GoPay yang ditampilkan di halaman Billing buat transfer manual. Cocok dipakai sebelum akun Mayar/gateway lain kelar diverifikasi. |
+| `ADMIN_EMAIL` | Wajib diisi kalau pakai `MANUAL_PAYMENT_GOPAY_NUMBER` — email akun yang boleh buka `/admin/orders` buat konfirmasi transfer masuk secara manual. |
 
 ### Catatan soal integrasi Mayar
 

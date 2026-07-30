@@ -36,6 +36,26 @@ export function isBillingConfigured(): boolean {
   return Boolean(process.env.MAYAR_API_KEY);
 }
 
+/** Manual transfer (e.g. GoPay) as a payment option, with the operator confirming by hand. */
+export function isManualPaymentConfigured(): boolean {
+  return Boolean(process.env.MANUAL_PAYMENT_GOPAY_NUMBER);
+}
+
+export function getManualPaymentNumber(): string | null {
+  return process.env.MANUAL_PAYMENT_GOPAY_NUMBER ?? null;
+}
+
+/** Whether this user is the app operator, allowed to confirm manual payments. */
+export function isAdmin(email: string): boolean {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  return Boolean(adminEmail) && email.toLowerCase() === adminEmail!.toLowerCase();
+}
+
+/** True once any way to actually collect payment exists — Mayar or manual transfer. */
+export function isMonetizationLive(): boolean {
+  return isBillingConfigured() || isManualPaymentConfigured();
+}
+
 export type QuotaStatus = {
   plan: Plan;
   limit: number;
@@ -53,7 +73,7 @@ export type QuotaStatus = {
 export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
   const user = await rolloverQuotaIfNeeded(userId);
   const limit = PLAN_AI_QUOTA[user.plan];
-  const enforced = isBillingConfigured();
+  const enforced = isMonetizationLive();
   return {
     plan: user.plan,
     limit,
@@ -78,7 +98,7 @@ async function rolloverQuotaIfNeeded(userId: string): Promise<User> {
 
 /** Increments quota usage by one AI action. Call only after a successful generation. */
 export async function consumeAiQuota(userId: string): Promise<void> {
-  if (!isBillingConfigured()) return;
+  if (!isMonetizationLive()) return;
   await prisma.user.update({
     where: { id: userId },
     data: { aiQuotaUsed: { increment: 1 } },
@@ -87,6 +107,42 @@ export async function consumeAiQuota(userId: string): Promise<void> {
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+/** Marks an order paid and activates the plan it was for on the order's user. No-op if already paid. */
+async function activateOrder(orderId: string): Promise<void> {
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  if (order.status === "PAID") return;
+
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id: order.id },
+      data: { status: "PAID", paidAt: new Date() },
+    }),
+    prisma.user.update({
+      where: { id: order.userId },
+      data: {
+        plan: order.plan,
+        planRenewsAt: addDays(new Date(), QUOTA_PERIOD_DAYS),
+        aiQuotaUsed: 0,
+        aiQuotaResetAt: addDays(new Date(), QUOTA_PERIOD_DAYS),
+      },
+    }),
+  ]);
+}
+
+/** Creates a pending manual-transfer order for the operator to confirm by hand. */
+export async function createManualOrder(userId: string, plan: PlanUpgrade): Promise<void> {
+  await prisma.order.create({
+    data: { userId, plan, amount: PLAN_PRICE[plan], status: "PENDING", provider: "manual" },
+  });
+}
+
+/** Operator-only: confirms a pending manual order and activates the plan. */
+export async function confirmManualOrder(orderId: string): Promise<void> {
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+  if (order.provider !== "manual") throw new Error("Bukan order transfer manual");
+  await activateOrder(order.id);
 }
 
 const MAYAR_API_BASE = "https://api.mayar.id/hl/v1";
@@ -186,21 +242,7 @@ export async function applyMayarWebhookPayload(payload: unknown): Promise<void> 
     return;
   }
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: order.id },
-      data: { status: "PAID", paidAt: new Date() },
-    }),
-    prisma.user.update({
-      where: { id: order.userId },
-      data: {
-        plan: order.plan,
-        planRenewsAt: addDays(new Date(), QUOTA_PERIOD_DAYS),
-        aiQuotaUsed: 0,
-        aiQuotaResetAt: addDays(new Date(), QUOTA_PERIOD_DAYS),
-      },
-    }),
-  ]);
+  await activateOrder(order.id);
 }
 
 function extractInvoiceData(

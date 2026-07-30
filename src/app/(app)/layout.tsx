@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/billing";
 import { logout } from "@/app/auth-actions";
 import { MobileNav, Sidebar } from "@/components/Nav";
 
@@ -14,10 +15,16 @@ export default async function AppLayout({
   });
 
   const navUser = { name: user.name, email: user.email };
+  const showAdminLink = isAdmin(user.email);
 
   return (
     <div className="flex min-h-dvh">
-      <Sidebar user={navUser} unreadCount={unreadCount} logoutAction={logout} />
+      <Sidebar
+        user={navUser}
+        unreadCount={unreadCount}
+        logoutAction={logout}
+        showAdmin={showAdminLink}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileNav unreadCount={unreadCount} logoutAction={logout} />
         <main className="flex-1 px-4 pt-5 pb-24 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10">
