@@ -33,7 +33,7 @@ export type PlanUpgrade = Exclude<Plan, "FREE">;
  * before there's any way for them to pay.
  */
 export function isBillingConfigured(): boolean {
-  return Boolean(process.env.MAYAR_API_KEY);
+  return Boolean(process.env.LYNK_PRO_URL || process.env.LYNK_STUDIO_URL);
 }
 
 /** Manual transfer (e.g. GoPay) as a payment option, with the operator confirming by hand. */
@@ -51,7 +51,7 @@ export function isAdmin(email: string): boolean {
   return Boolean(adminEmail) && email.toLowerCase() === adminEmail!.toLowerCase();
 }
 
-/** True once any way to actually collect payment exists — Mayar or manual transfer. */
+/** True once any way to actually collect payment exists — lynk.id or manual transfer. */
 export function isMonetizationLive(): boolean {
   return isBillingConfigured() || isManualPaymentConfigured();
 }
@@ -145,124 +145,106 @@ export async function confirmManualOrder(orderId: string): Promise<void> {
   await activateOrder(order.id);
 }
 
-const MAYAR_API_BASE = "https://api.mayar.id/hl/v1";
-
-type MayarInvoiceResponse = {
-  data?: { id?: string; transactionId?: string; link?: string };
-};
-
 /**
- * Creates a Mayar payment link for a plan upgrade and records it as a
- * pending Order. Field names follow Mayar's public docs as of writing
- * (name/email/mobile/redirectUrl/items, response data.link + data.id) —
- * Mayar's docs site blocks automated fetches, so this hasn't been verified
- * against a live account. Re-check against a real invoice response before
- * relying on it in production.
+ * lynk.id sells the plans as ordinary products: you create one product per
+ * paid plan in the lynk.id dashboard and paste its checkout link here. There
+ * is no API call to make — buyers are sent to the link, and lynk.id posts to
+ * our webhook once they've paid.
  */
-export async function createMayarCheckout(
-  user: Pick<User, "id" | "name" | "email">,
-  plan: PlanUpgrade,
-  redirectUrl: string
-): Promise<{ paymentLink: string; orderId: string }> {
-  const apiKey = process.env.MAYAR_API_KEY;
-  if (!apiKey) throw new Error("MAYAR_API_KEY belum diatur");
+export function getLynkCheckoutUrl(plan: PlanUpgrade): string | null {
+  const url =
+    plan === "PRO" ? process.env.LYNK_PRO_URL : process.env.LYNK_STUDIO_URL;
+  return url || null;
+}
 
-  const amount = PLAN_PRICE[plan];
+/** Records the pending order and hands back where to send the buyer. */
+export async function startLynkCheckout(
+  userId: string,
+  plan: PlanUpgrade
+): Promise<string> {
+  const url = getLynkCheckoutUrl(plan);
+  if (!url) throw new Error(`Link pembayaran ${PLAN_LABEL[plan]} belum diatur`);
 
-  const order = await prisma.order.create({
-    data: { userId: user.id, plan, amount, status: "PENDING" },
+  await prisma.order.create({
+    data: { userId, plan, amount: PLAN_PRICE[plan], status: "PENDING", provider: "lynk" },
   });
 
-  const res = await fetch(`${MAYAR_API_BASE}/invoice/create`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: user.name,
-      email: user.email,
-      mobile: "-",
-      description: `Langganan Creator Studio ${PLAN_LABEL[plan]} (30 hari)`,
-      redirectUrl,
-      items: [
-        {
-          quantity: 1,
-          description: `Langganan ${PLAN_LABEL[plan]}`,
-          rate: amount,
-        },
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    await prisma.order.update({ where: { id: order.id }, data: { status: "FAILED" } });
-    throw new Error(`Mayar menolak permintaan invoice (status ${res.status})`);
-  }
-
-  const body = (await res.json()) as MayarInvoiceResponse;
-  const paymentLink = body.data?.link;
-  const externalId = body.data?.transactionId ?? body.data?.id;
-
-  if (!paymentLink || !externalId) {
-    await prisma.order.update({ where: { id: order.id }, data: { status: "FAILED" } });
-    throw new Error("Respons Mayar tidak berisi link pembayaran");
-  }
-
-  await prisma.order.update({
-    where: { id: order.id },
-    data: { externalId, paymentLink },
-  });
-
-  return { paymentLink, orderId: order.id };
+  return url;
 }
 
 /**
- * Applies a webhook notification, matched to its Order by externalId. Trusts
- * the payment status only when it clearly reads as paid — anything
- * ambiguous is logged and left PENDING rather than guessed at, since the
- * exact field names Mayar sends couldn't be confirmed against live docs.
+ * Applies a lynk.id webhook.
+ *
+ * lynk.id's docs aren't reachable from here, so rather than guessing at one
+ * exact payload shape this reads the buyer's email and the payment status from
+ * whatever plausible keys the payload happens to use, at any nesting depth.
+ *
+ * The safety property that matters: a plan is only ever granted when the
+ * payload clearly reads as paid AND the email matches a user who has a pending
+ * lynk order waiting. Anything short of that is logged and left pending, for
+ * the operator to confirm by hand at /admin/orders — so an unrecognised payload
+ * can never hand out a paid plan by accident.
  */
-export async function applyMayarWebhookPayload(payload: unknown): Promise<void> {
-  const data = extractInvoiceData(payload);
-  if (!data?.externalId) {
-    console.warn("Mayar webhook: tidak ketemu id transaksi di payload", payload);
+export async function applyLynkWebhookPayload(payload: unknown): Promise<void> {
+  const email = findValue(payload, EMAIL_KEYS);
+  const status = findValue(payload, STATUS_KEYS) ?? "";
+
+  if (!email) {
+    console.warn("lynk webhook: tidak ada email pembeli di payload", payload);
+    return;
+  }
+  if (!PAID_PATTERN.test(status)) {
+    console.info("lynk webhook: status belum lunas, dibiarkan pending", { email, status });
     return;
   }
 
-  const order = await prisma.order.findUnique({ where: { externalId: data.externalId } });
+  const order = await prisma.order.findFirst({
+    where: {
+      status: "PENDING",
+      provider: "lynk",
+      user: { email: email.trim().toLowerCase() },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   if (!order) {
-    console.warn("Mayar webhook: order tidak ditemukan untuk id", data.externalId);
-    return;
-  }
-  if (order.status === "PAID") return;
-
-  if (!data.isPaid) {
-    console.info("Mayar webhook: status belum paid, dibiarkan pending", data.status);
+    console.warn("lynk webhook: tidak ada order pending untuk email ini", email);
     return;
   }
 
   await activateOrder(order.id);
 }
 
-function extractInvoiceData(
-  payload: unknown
-): { externalId: string; status: string; isPaid: boolean } | null {
-  if (!payload || typeof payload !== "object") return null;
-  const root = payload as Record<string, unknown>;
-  const data = (root.data ?? root) as Record<string, unknown>;
+const EMAIL_KEYS = ["email", "customeremail", "buyeremail", "customer_email", "buyer_email"];
+const STATUS_KEYS = ["status", "paymentstatus", "payment_status", "event", "transactionstatus"];
+const PAID_PATTERN = /paid|success|settlement|complete|lunas|berhasil/i;
 
-  const externalId = firstString(data.transactionId, data.id, data.invoiceId);
-  const status = firstString(data.status, root.event, data.paymentStatus) ?? "";
-  if (!externalId) return null;
+/**
+ * Depth-first search for the first string sitting under any of `keys`,
+ * comparing key names case- and separator-insensitively.
+ */
+function findValue(node: unknown, keys: string[], depth = 0): string | undefined {
+  if (depth > 6 || node === null || typeof node !== "object") return undefined;
 
-  const isPaid = /paid|success|settlement|received/i.test(status);
-  return { externalId, status, isPaid };
-}
-
-function firstString(...values: unknown[]): string | undefined {
-  for (const v of values) {
-    if (typeof v === "string" && v.length > 0) return v;
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findValue(item, keys, depth + 1);
+      if (found) return found;
+    }
+    return undefined;
   }
+
+  for (const [key, value] of Object.entries(node)) {
+    const normalised = key.toLowerCase().replace(/[^a-z]/g, "");
+    if (keys.some((k) => k.replace(/[^a-z]/g, "") === normalised)) {
+      if (typeof value === "string" && value.trim()) return value.trim();
+    }
+  }
+
+  for (const value of Object.values(node)) {
+    const found = findValue(value, keys, depth + 1);
+    if (found) return found;
+  }
+
   return undefined;
 }

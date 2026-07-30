@@ -6,13 +6,12 @@ import { requireUser } from "@/lib/auth";
 import {
   confirmManualOrder,
   createManualOrder,
-  createMayarCheckout,
   isAdmin,
   isBillingConfigured,
   isManualPaymentConfigured,
+  startLynkCheckout,
   type PlanUpgrade,
 } from "@/lib/billing";
-import { headers } from "next/headers";
 
 export type CheckoutState = { error?: string };
 
@@ -31,17 +30,12 @@ export async function startCheckout(
     return { error: "Plan tidak valid." };
   }
 
-  const host = (await headers()).get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
-  const origin = `${protocol}://${host}`;
-
   let paymentLink: string;
   try {
-    const checkout = await createMayarCheckout(user, plan as PlanUpgrade, `${origin}/billing`);
-    paymentLink = checkout.paymentLink;
+    paymentLink = await startLynkCheckout(user.id, plan as PlanUpgrade);
   } catch (error) {
-    console.error("Gagal membuat checkout Mayar", error);
-    return { error: error instanceof Error ? error.message : "Gagal membuat halaman pembayaran." };
+    console.error("Gagal memulai checkout lynk.id", error);
+    return { error: error instanceof Error ? error.message : "Gagal membuka halaman pembayaran." };
   }
 
   redirect(paymentLink);

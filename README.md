@@ -27,7 +27,7 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     evaluasi konten yang sudah tayang.
 - **Tema terang & gelap.**
 - **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis/Pro/Studio,
-  dan integrasi pembayaran [Mayar](https://mayar.id) buat langganan bulanan.
+  dan pembayaran lewat [lynk.id](https://lynk.id) atau transfer manual.
 
 ## Yang belum ada
 
@@ -64,7 +64,7 @@ hanya menampilkan petunjuk cara mengaktifkannya.
 
 Pemakaian AI ditagih per penggunaan ke akun pemilik kunci, jadi perhitungkan
 biayanya kalau aplikasi ini dipakai banyak orang — isi `MANUAL_PAYMENT_GOPAY_NUMBER`
-atau `MAYAR_API_KEY` (lihat tabel di bawah) supaya pemakaian AI dibatasi kuota
+atau `LYNK_PRO_URL` (lihat tabel di bawah) supaya pemakaian AI dibatasi kuota
 per plan dan biayanya tertutup dari langganan.
 
 ### Catatan performa
@@ -80,19 +80,33 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `ANTHROPIC_API_KEY` | Alternatif: memanggil Anthropic langsung tanpa gateway. Dipakai kalau `AI_GATEWAY_API_KEY` kosong. |
 | `AI_MODEL` | Ganti model tanpa ubah kode. Default `google/gemini-2.5-flash` (lewat gateway) atau `claude-sonnet-5` (langsung ke Anthropic). |
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
-| `MAYAR_API_KEY` | Mengaktifkan plan berbayar (Pro/Studio) lewat [Mayar](https://mayar.id). Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
-| `MAYAR_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook Mayar (`/api/billing/webhook/mayar?token=...`) supaya endpoint itu cuma menerima notifikasi asli dari Mayar. |
-| `MANUAL_PAYMENT_GOPAY_NUMBER` | Alternatif Mayar — nomor GoPay yang ditampilkan di halaman Billing buat transfer manual. Cocok dipakai sebelum akun Mayar/gateway lain kelar diverifikasi. |
-| `ADMIN_EMAIL` | Wajib diisi kalau pakai `MANUAL_PAYMENT_GOPAY_NUMBER` — email akun yang boleh buka `/admin/orders` buat konfirmasi transfer masuk secara manual. |
+| `LYNK_PRO_URL`, `LYNK_STUDIO_URL` | Link checkout produk di [lynk.id](https://lynk.id) untuk tiap plan berbayar. Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
+| `LYNK_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook lynk.id (`/api/billing/webhook/lynk?token=...`) supaya endpoint itu cuma menerima notifikasi asli. |
+| `MANUAL_PAYMENT_GOPAY_NUMBER` | Nomor GoPay yang ditampilkan di halaman Billing buat transfer manual. Berguna sebelum akun lynk.id kelar diverifikasi, dan sebagai cadangan kalau ada pembayaran yang gagal dicocokkan otomatis. |
+| `ADMIN_EMAIL` | Wajib diisi kalau pakai pembayaran manual — email akun yang boleh buka `/admin/orders` buat konfirmasi pembayaran masuk secara manual. |
 
-### Catatan soal integrasi Mayar
+### Cara menyiapkan pembayaran lynk.id
 
-Kode di `src/lib/billing.ts` mengikuti dokumentasi publik Mayar untuk pembuatan invoice
-dan notifikasi webhook, tapi situs dokumentasinya memblokir automated fetching sehingga
-nama field persisnya belum pernah diverifikasi langsung ke API asli. Setelah punya akun
-Mayar, cek respons invoice dan payload webhook sungguhan (Mayar punya fitur "kirim
-webhook uji coba" di dashboard-nya), lalu sesuaikan `createMayarCheckout` dan
-`applyMayarWebhookPayload` kalau nama field-nya beda.
+1. Buat satu produk per plan berbayar di dashboard lynk.id (Pro dan Studio),
+   dengan harga yang sama seperti di `PLAN_PRICE` (`src/lib/billing.ts`).
+2. Salin link checkout tiap produk ke `LYNK_PRO_URL` dan `LYNK_STUDIO_URL`.
+3. Buat token acak sendiri, isi ke `LYNK_WEBHOOK_TOKEN`, lalu daftarkan
+   `https://domainmu/api/billing/webhook/lynk?token=<token itu>` sebagai URL
+   webhook di dashboard lynk.id.
+
+Alurnya: pembeli diarahkan ke link lynk.id, dan begitu pembayarannya masuk,
+webhook mencocokkan email pembeli dengan akun yang punya order pending, lalu
+mengaktifkan plannya.
+
+**Catatan:** dokumentasi lynk.id memblokir automated fetching, jadi nama field
+persis di payload webhook belum pernah diverifikasi ke sistem aslinya.
+`applyLynkWebhookPayload` karena itu sengaja dibuat toleran — ia mencari email
+dan status pembayaran dari beberapa kemungkinan nama field, di kedalaman berapa
+pun. Kalau tetap tidak cocok, ordernya **dibiarkan pending** (bukan diaktifkan)
+dan bisa dikonfirmasi manual lewat `/admin/orders`. Jadi payload yang tak
+dikenali tidak akan pernah membagikan plan berbayar secara keliru. Setelah
+transaksi pertama, cek log webhooknya dan sesuaikan `EMAIL_KEYS`/`STATUS_KEYS`
+di `src/lib/billing.ts` kalau perlu.
 
 ## Menjalankan secara lokal
 
