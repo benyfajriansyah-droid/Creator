@@ -16,16 +16,23 @@ const globalForPrisma = globalThis as unknown as {
 /**
  * Which variable actually holds the connection string depends on how the
  * database was attached: Vercel's Neon integration prefixes the names it
- * creates, so the plain spellings aren't always present. Try the ones we
- * might reasonably be given, direct (unpooled) endpoints first — the pooled
- * one goes through PgBouncer.
+ * creates, so the plain spellings aren't always present.
+ *
+ * DIRECT_URL comes first deliberately. It's the one set for this app by hand,
+ * so it's the one that gets corrected when credentials change — the
+ * integration's own variables can keep serving a stale password after a
+ * database password reset, which failed here as P1000 ("Authentication failed
+ * against database server") on every query while migrations, which read
+ * DIRECT_URL, kept working. Keep this list in the same order as the one in
+ * prisma.config.ts, so the build and the running app agree on which database
+ * they're talking to.
  */
 const CONNECTION_ENV_VARS = [
+  "DIRECT_URL",
   "DATABASE_URL_UNPOOLED",
   "DATABASE_DATABASE_URL_UNPOOLED",
   "POSTGRES_URL_NON_POOLING",
   "DATABASE_POSTGRES_URL_NON_POOLING",
-  "DIRECT_URL",
   "DATABASE_URL",
 ];
 
@@ -38,6 +45,9 @@ function resolveConnectionString(): string | null {
       // Neon scales to zero, so the first connection after an idle period
       // has to wait for the compute to wake up.
       url.searchParams.set("connect_timeout", "30");
+      // Name only, never the value — enough to tell which variable is in play
+      // when credentials turn out to be wrong.
+      console.info(`Database connection string taken from ${name}.`);
       return url.toString();
     } catch {
       // Not a URL — e.g. a bare hostname pasted by mistake. Keep looking.
