@@ -8,7 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 export type NavUser = { name: string; email: string };
 
 const LINKS = [
-  { href: "/", label: "Dashboard", icon: <GridIcon /> },
+  { href: "/dashboard", label: "Dashboard", icon: <GridIcon /> },
   { href: "/board", label: "Papan", icon: <ColumnsIcon /> },
   { href: "/calendar", label: "Kalender", icon: <CalendarIcon /> },
   { href: "/content", label: "Konten", icon: <ListIcon /> },
@@ -18,11 +18,12 @@ const LINKS = [
 
 const SECONDARY = [
   { href: "/accounts", label: "Akun Sosmed", icon: <UsersIcon /> },
+  { href: "/billing", label: "Billing", icon: <CardIcon /> },
   { href: "/settings", label: "Pengaturan", icon: <GearIcon /> },
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function Sidebar({
@@ -38,7 +39,7 @@ export function Sidebar({
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] px-3 py-4 lg:flex">
-      <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
+      <Link href="/dashboard" className="mb-6 flex items-center gap-2.5 px-2">
         <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M8 5v14l11-7z" />
@@ -148,7 +149,7 @@ export function MobileNav({
   return (
     <>
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)]/90 px-4 py-2.5 backdrop-blur lg:hidden">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <span className="flex size-7 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M8 5v14l11-7z" />
@@ -271,6 +272,14 @@ function UsersIcon() {
     <svg {...iconProps}>
       <circle cx="9" cy="8" r="3.5" />
       <path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 11a3 3 0 1 0 0-6M18 20a6 6 0 0 0-2-4.5" />
+    </svg>
+  );
+}
+function CardIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="2.5" y="5" width="19" height="14" rx="2" />
+      <path d="M2.5 10h19" />
     </svg>
   );
 }

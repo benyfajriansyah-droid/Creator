@@ -10,6 +10,7 @@ import {
   getAiClient,
   isAiConfigured,
 } from "@/lib/ai";
+import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
 import { PLATFORM_LABEL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,16 @@ export async function POST(request: Request) {
   const task: TaskKey = (Object.keys(TASKS) as TaskKey[]).includes(body?.task)
     ? body.task
     : "hooks";
+
+  const quota = await getQuotaStatus(user.id);
+  if (quota.remaining <= 0) {
+    return NextResponse.json(
+      {
+        error: `Kuota AI bulan ini habis (${quota.used}/${quota.limit}). Upgrade plan di halaman Billing buat lanjut.`,
+      },
+      { status: 402 }
+    );
+  }
 
   const item = await prisma.contentItem.findFirst({
     where: { id: contentId, userId: user.id },
@@ -108,6 +119,7 @@ export async function POST(request: Request) {
       .map((block) => (block as { text: string }).text)
       .join("");
 
+    await consumeAiQuota(user.id);
     return NextResponse.json({ text });
   } catch (error) {
     console.error("AI assist failed", error);

@@ -10,6 +10,7 @@ import {
   getAiClient,
   isAiConfigured,
 } from "@/lib/ai";
+import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -33,6 +34,16 @@ export async function POST(request: Request) {
 
   if (!message) {
     return NextResponse.json({ error: "Pesan kosong" }, { status: 400 });
+  }
+
+  const quota = await getQuotaStatus(user.id);
+  if (quota.remaining <= 0) {
+    return NextResponse.json(
+      {
+        error: `Kuota AI bulan ini habis (${quota.used}/${quota.limit}). Upgrade plan di halaman Billing buat lanjut.`,
+      },
+      { status: 402 }
+    );
   }
 
   // Only continue a thread the caller actually owns; otherwise start a new one.
@@ -127,6 +138,7 @@ export async function POST(request: Request) {
             where: { id: thread.id },
             data: { updatedAt: new Date() },
           });
+          await consumeAiQuota(user.id);
           send({ type: "done" });
         }
       } catch (error) {

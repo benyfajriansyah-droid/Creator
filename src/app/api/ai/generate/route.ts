@@ -9,6 +9,7 @@ import {
   getAiClient,
   isAiConfigured,
 } from "@/lib/ai";
+import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
 import { FUNNEL_SCHEMA, IDEAS_SCHEMA } from "@/lib/ai-schemas";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,16 @@ export async function POST(request: Request) {
     : mode === "funnel"
       ? 2
       : 5;
+
+  const quota = await getQuotaStatus(user.id);
+  if (quota.remaining <= 0) {
+    return NextResponse.json(
+      {
+        error: `Kuota AI bulan ini habis (${quota.used}/${quota.limit}). Upgrade plan di halaman Billing buat lanjut.`,
+      },
+      { status: 402 }
+    );
+  }
 
   try {
     const context = await buildCreatorContext(user.id);
@@ -118,6 +129,7 @@ export async function POST(request: Request) {
       );
     }
 
+    await consumeAiQuota(user.id);
     return NextResponse.json({ mode, result: parsed });
   } catch (error) {
     console.error("AI generate failed", error);

@@ -37,6 +37,19 @@ enum NotificationKind {
   METRICS_REMINDER
 }
 
+enum Plan {
+  FREE
+  PRO
+  STUDIO
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -50,14 +63,44 @@ model User {
   /// Hour of day (0-23, in the user's time zone) to send the daily digest.
   dailyDigestHour     Int     @default(7)
 
+  plan          Plan      @default(FREE)
+  /// When the current paid period ends; null while on the free plan.
+  planRenewsAt  DateTime?
+  aiQuotaUsed   Int       @default(0)
+  /// When aiQuotaUsed rolls back to 0. Reset lazily the next time quota is checked.
+  aiQuotaResetAt DateTime?
+
   accounts      SocialAccount[]
   contentItems  ContentItem[]
   subscriptions PushSubscription[]
   notifications Notification[]
   aiThreads     AiThread[]
+  orders        Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// One billing attempt/transaction for a plan upgrade, created before redirecting
+/// the user to the payment gateway and confirmed once the webhook (or a manual
+/// re-check) reports it paid.
+model Order {
+  id       String      @id @default(cuid())
+  userId   String
+  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     Plan
+  amount   Int
+  status   OrderStatus @default(PENDING)
+  provider String      @default("mayar")
+  /// Invoice/transaction id from the payment gateway, set once the checkout is created.
+  externalId   String? @unique
+  paymentLink  String?
+  paidAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model SocialAccount {

@@ -26,6 +26,8 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
   - **Bantuan per konten** — variasi hook, draft script, caption + hashtag, dan
     evaluasi konten yang sudah tayang.
 - **Tema terang & gelap.**
+- **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis/Pro/Studio,
+  dan integrasi pembayaran [Mayar](https://mayar.id) buat langganan bulanan.
 
 ## Yang belum ada
 
@@ -50,7 +52,8 @@ project Vercel (buat kuncinya di [console.anthropic.com](https://console.anthrop
 Tanpa kunci itu aplikasi tetap berjalan normal — tab AI hanya menampilkan
 petunjuk cara mengaktifkannya. Pemakaian AI ditagih per penggunaan ke akun
 Anthropic pemilik kunci, jadi perhitungkan biayanya kalau aplikasi ini dipakai
-banyak orang.
+banyak orang — tambahkan `MAYAR_API_KEY` (lihat tabel di bawah) supaya
+pemakaian AI dibatasi kuota per plan dan biayanya tertutup dari langganan.
 
 ### Catatan performa
 
@@ -63,6 +66,17 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Mengaktifkan seluruh fitur AI. Tanpa ini, tab AI menampilkan petunjuk setup dan fitur lain tetap jalan. |
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
+| `MAYAR_API_KEY` | Mengaktifkan plan berbayar (Pro/Studio) lewat [Mayar](https://mayar.id). Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
+| `MAYAR_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook Mayar (`/api/billing/webhook/mayar?token=...`) supaya endpoint itu cuma menerima notifikasi asli dari Mayar. |
+
+### Catatan soal integrasi Mayar
+
+Kode di `src/lib/billing.ts` mengikuti dokumentasi publik Mayar untuk pembuatan invoice
+dan notifikasi webhook, tapi situs dokumentasinya memblokir automated fetching sehingga
+nama field persisnya belum pernah diverifikasi langsung ke API asli. Setelah punya akun
+Mayar, cek respons invoice dan payload webhook sungguhan (Mayar punya fitur "kirim
+webhook uji coba" di dashboard-nya), lalu sesuaikan `createMayarCheckout` dan
+`applyMayarWebhookPayload` kalau nama field-nya beda.
 
 ## Menjalankan secara lokal
 
