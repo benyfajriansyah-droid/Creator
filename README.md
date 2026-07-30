@@ -40,9 +40,14 @@ perencanaan, penjadwalan, pengingat, dan pencatatan hasil.
 
 1. Buka [vercel.com](https://vercel.com), login pakai GitHub, import repo ini.
 2. Di tab **Storage** project, buat database **Postgres** (Neon) dan connect ke
-   project. Ini otomatis mengisi `DATABASE_URL`. Pastikan **prefix environment
-   variable dikosongkan** supaya namanya persis `DATABASE_URL`.
-3. Deploy. Migrasi database jalan otomatis lewat script `vercel-build`.
+   project. Ini otomatis mengisi beberapa environment variable.
+3. Tambahin satu env variable manual: `DIRECT_URL`, isinya connection string
+   yang **non-pooled**. Neon/Vercel biasanya bikin variabel terpisah buat ini —
+   cari di halaman Environment Variables yang namanya mengandung `UNPOOLED`
+   atau `NON_POOLING` dan isinya berupa connection string lengkap (`postgresql://...`),
+   lalu salin nilainya. Tanpa ini, `prisma migrate deploy` gagal dengan error
+   P1002 (timeout) karena migrasi butuh koneksi langsung, bukan lewat pooler.
+4. Deploy. Migrasi database jalan otomatis lewat script `vercel-build`.
 
 Kunci sesi dan VAPID key untuk push notification dibuat otomatis saat pertama
 kali dipakai dan disimpan di database.
