@@ -4,30 +4,163 @@ import { prisma } from "@/lib/prisma";
 import { engagementRateOf, formatEngagement } from "@/lib/scoring";
 import { PLATFORM_LABEL, formatNumber } from "@/lib/constants";
 
-export const AI_MODEL = "claude-opus-5";
+const GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh";
 
 /**
- * `medium` is the cost/quality lever for this app. Opus 5 stays strong at
+ * Two ways to reach a model, in priority order:
+ *
+ *  1. Vercel AI Gateway (`AI_GATEWAY_API_KEY`) — speaks the Anthropic Messages
+ *     API, so the same SDK reaches Gemini, Claude, and others. Model ids are
+ *     `provider/model`, and swapping providers is a one-line change here.
+ *  2. Anthropic directly (`ANTHROPIC_API_KEY`) — model ids are bare, e.g.
+ *     `claude-sonnet-5`.
+ *
+ * `AI_MODEL` overrides the default either way. Available gateway model ids
+ * are listed at https://ai-gateway.vercel.sh/v1/models.
+ */
+const DEFAULT_GATEWAY_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+
+function usingGateway(): boolean {
+  return Boolean(process.env.AI_GATEWAY_API_KEY);
+}
+
+export function getAiModel(): string {
+  return (
+    process.env.AI_MODEL ||
+    (usingGateway() ? DEFAULT_GATEWAY_MODEL : DEFAULT_ANTHROPIC_MODEL)
+  );
+}
+
+/**
+ * Anthropic-only request features (prompt cache breakpoints, the effort dial,
+ * server-side fallbacks, native structured output) are skipped for other
+ * providers, which reject or ignore them.
+ */
+function isAnthropicModel(): boolean {
+  const model = getAiModel();
+  return model.startsWith("anthropic/") || model.startsWith("claude");
+}
+
+/**
+ * `medium` is the cost/quality lever for this app. Claude stays strong at
  * medium, and idea generation isn't a deep-reasoning task — raise it if
  * output quality matters more than spend.
  */
-export const AI_EFFORT = "medium" as const;
+const AI_EFFORT = "medium" as const;
 
 /** Server-side refusal fallbacks, so a declined request still returns an answer. */
-export const AI_BETAS = ["server-side-fallback-2026-07-01"] as const;
+const AI_BETAS = ["server-side-fallback-2026-07-01"] as const;
 
 export function isAiConfigured(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.ANTHROPIC_API_KEY);
 }
 
 let cachedClient: Anthropic | null = null;
 
 export function getAiClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY belum diatur");
+  if (!isAiConfigured()) {
+    throw new Error("AI_GATEWAY_API_KEY atau ANTHROPIC_API_KEY belum diatur");
   }
-  cachedClient ??= new Anthropic();
+  cachedClient ??= usingGateway()
+    ? new Anthropic({
+        apiKey: process.env.AI_GATEWAY_API_KEY,
+        baseURL: GATEWAY_BASE_URL,
+      })
+    : new Anthropic();
   return cachedClient;
+}
+
+const MAX_TOKENS = 32000;
+
+export type AiMessage = { role: "user" | "assistant"; content: string };
+
+/**
+ * One place that knows how to talk to whichever model is configured, so the
+ * routes stay provider-agnostic.
+ *
+ * `jsonSchema` asks for a structured reply. Models with native support get the
+ * schema enforced by the API; the rest are told to emit matching JSON, which
+ * `parseJsonLoose` then reads.
+ */
+export function streamAiMessage({
+  context,
+  messages,
+  jsonSchema,
+}: {
+  context: string;
+  messages: AiMessage[];
+  jsonSchema?: Record<string, unknown>;
+}) {
+  const client = getAiClient();
+  const native = isAnthropicModel();
+  const contextText = `Data creator saat ini:\n\n${context}`;
+
+  if (!native) {
+    return client.messages.stream({
+      model: getAiModel(),
+      max_tokens: MAX_TOKENS,
+      system: `${SYSTEM_PROMPT}\n\n${contextText}`,
+      messages: jsonSchema ? withJsonInstruction(messages, jsonSchema) : messages,
+    });
+  }
+
+  return client.beta.messages.stream({
+    model: getAiModel(),
+    max_tokens: MAX_TOKENS,
+    betas: [...AI_BETAS],
+    fallbacks: "default",
+    output_config: {
+      effort: AI_EFFORT,
+      ...(jsonSchema ? { format: { type: "json_schema", schema: jsonSchema } } : {}),
+    },
+    system: [
+      { type: "text", text: SYSTEM_PROMPT },
+      // Breakpoint on the last block so system + context cache together —
+      // the prompt alone sits under the model's minimum cacheable prefix.
+      { type: "text", text: contextText, cache_control: { type: "ephemeral" } },
+    ],
+    messages,
+  });
+}
+
+/** Spells out the contract for models that can't have a schema enforced by the API. */
+function withJsonInstruction(
+  messages: AiMessage[],
+  schema: Record<string, unknown>
+): AiMessage[] {
+  const last = messages[messages.length - 1];
+  const instruction = `${last.content}
+
+Balas HANYA dengan satu objek JSON yang valid dan cocok dengan JSON Schema di bawah. Jangan bungkus dengan blok kode, jangan tambahkan penjelasan apa pun di luar JSON.
+
+${JSON.stringify(schema)}`;
+
+  return [...messages.slice(0, -1), { ...last, content: instruction }];
+}
+
+/** Reads JSON back even when a model wraps it in prose or a ```json fence. */
+export function parseJsonLoose(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = (fenced ? fenced[1] : text).trim();
+
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    // Fall back to the outermost {...} span, in case there's stray prose.
+    const start = candidate.indexOf("{");
+    const end = candidate.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("Jawaban AI bukan JSON");
+    return JSON.parse(candidate.slice(start, end + 1));
+  }
+}
+
+/** Concatenates the text blocks of a finished message. */
+export function textOf(message: { content: Array<{ type: string }> }): string {
+  return message.content
+    .filter((block): block is { type: "text"; text: string } => block.type === "text")
+    .map((block) => block.text)
+    .join("");
 }
 
 export const SYSTEM_PROMPT = `Kamu adalah asisten strategi konten untuk seorang content creator Indonesia.

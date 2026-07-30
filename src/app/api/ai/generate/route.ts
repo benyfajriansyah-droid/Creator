@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import {
-  AI_BETAS,
-  AI_EFFORT,
-  AI_MODEL,
-  SYSTEM_PROMPT,
   buildCreatorContext,
-  getAiClient,
   isAiConfigured,
+  parseJsonLoose,
+  streamAiMessage,
+  textOf,
 } from "@/lib/ai";
 import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
 import { FUNNEL_SCHEMA, IDEAS_SCHEMA } from "@/lib/ai-schemas";
@@ -48,7 +46,7 @@ export async function POST(request: Request) {
 
   if (!isAiConfigured()) {
     return NextResponse.json(
-      { error: "Fitur AI belum aktif. Setel ANTHROPIC_API_KEY dulu." },
+      { error: "Fitur AI belum aktif. Setel AI_GATEWAY_API_KEY dulu." },
       { status: 503 }
     );
   }
@@ -75,32 +73,12 @@ export async function POST(request: Request) {
 
   try {
     const context = await buildCreatorContext(user.id);
-    const client = getAiClient();
 
     // Streamed so a long generation can't hit the platform's HTTP timeout.
-    const stream = client.beta.messages.stream({
-      model: AI_MODEL,
-      max_tokens: 32000,
-      betas: [...AI_BETAS],
-      fallbacks: "default",
-      output_config: {
-        effort: AI_EFFORT,
-        format: {
-          type: "json_schema",
-          schema: mode === "funnel" ? FUNNEL_SCHEMA : IDEAS_SCHEMA,
-        },
-      },
-      system: [
-        { type: "text", text: SYSTEM_PROMPT },
-        // Breakpoint on the last block so system + context cache together —
-        // the prompt alone sits under the model's minimum cacheable prefix.
-        {
-          type: "text",
-          text: `Data creator saat ini:\n\n${context}`,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
+    const stream = streamAiMessage({
+      context,
       messages: [{ role: "user", content: buildPrompt(mode, brief, count) }],
+      jsonSchema: mode === "funnel" ? FUNNEL_SCHEMA : IDEAS_SCHEMA,
     });
 
     const message = await stream.finalMessage();
@@ -112,16 +90,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const text = message.content
-      .filter((block): block is { type: "text"; text: string } & typeof block =>
-        block.type === "text"
-      )
-      .map((block) => block.text)
-      .join("");
-
     let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
+      parsed = parseJsonLoose(textOf(message));
     } catch {
       return NextResponse.json(
         { error: "Jawaban AI tidak bisa dibaca. Coba lagi." },

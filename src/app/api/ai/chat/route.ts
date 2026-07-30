@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import {
-  AI_BETAS,
-  AI_EFFORT,
-  AI_MODEL,
-  SYSTEM_PROMPT,
-  buildCreatorContext,
-  getAiClient,
-  isAiConfigured,
-} from "@/lib/ai";
+import { buildCreatorContext, isAiConfigured, streamAiMessage } from "@/lib/ai";
 import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +15,7 @@ export async function POST(request: Request) {
 
   if (!isAiConfigured()) {
     return NextResponse.json(
-      { error: "Fitur AI belum aktif. Setel ANTHROPIC_API_KEY dulu." },
+      { error: "Fitur AI belum aktif. Setel AI_GATEWAY_API_KEY dulu." },
       { status: 503 }
     );
   }
@@ -76,24 +68,9 @@ export async function POST(request: Request) {
   });
 
   const context = await buildCreatorContext(user.id);
-  const client = getAiClient();
 
-  const stream = client.beta.messages.stream({
-    model: AI_MODEL,
-    max_tokens: 32000,
-    betas: [...AI_BETAS],
-    fallbacks: "default",
-    output_config: { effort: AI_EFFORT },
-    system: [
-      { type: "text", text: SYSTEM_PROMPT },
-      // Breakpoint on the last block so system + context cache together —
-      // the prompt alone sits under the model's minimum cacheable prefix.
-      {
-        type: "text",
-        text: `Data creator saat ini:\n\n${context}`,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
+  const stream = streamAiMessage({
+    context,
     messages: [
       ...history.map((m) => ({
         role: m.role === "USER" ? ("user" as const) : ("assistant" as const),

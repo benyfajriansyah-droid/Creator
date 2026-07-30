@@ -64,18 +64,19 @@ export default async function AiPage({
             Fitur AI belum aktif
           </p>
           <p className="mt-1 text-sm text-[var(--text)]">
-            Tambahkan environment variable <code>ANTHROPIC_API_KEY</code> di project
-            Vercel kamu (Settings → Environment Variables), lalu deploy ulang. Kunci API
-            bisa dibuat di{" "}
+            Tambahkan environment variable <code>AI_GATEWAY_API_KEY</code> di project
+            Vercel kamu (Settings → Environment Variables), lalu deploy ulang. Kuncinya
+            ada di tab{" "}
             <a
-              href="https://console.anthropic.com"
+              href="https://vercel.com/docs/ai-gateway"
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium underline"
             >
-              console.anthropic.com
-            </a>
-            . Pemakaian AI ditagih per penggunaan ke akun tersebut.
+              AI Gateway
+            </a>{" "}
+            project Vercel yang sama — tiap bulan dapat kredit gratis, lewat dari itu
+            ditagih sesuai pemakaian.
           </p>
         </Card>
       )}

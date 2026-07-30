@@ -52,13 +52,20 @@ perencanaan, penjadwalan, pengingat, dan pencatatan hasil.
 Kunci sesi dan VAPID key untuk push notification dibuat otomatis saat pertama
 kali dipakai dan disimpan di database.
 
-Untuk mengaktifkan fitur AI, tambahkan `ANTHROPIC_API_KEY` di environment variable
-project Vercel (buat kuncinya di [console.anthropic.com](https://console.anthropic.com)).
-Tanpa kunci itu aplikasi tetap berjalan normal — tab AI hanya menampilkan
-petunjuk cara mengaktifkannya. Pemakaian AI ditagih per penggunaan ke akun
-Anthropic pemilik kunci, jadi perhitungkan biayanya kalau aplikasi ini dipakai
-banyak orang — tambahkan `MAYAR_API_KEY` (lihat tabel di bawah) supaya
-pemakaian AI dibatasi kuota per plan dan biayanya tertutup dari langganan.
+Untuk mengaktifkan fitur AI, tambahkan `AI_GATEWAY_API_KEY` di environment
+variable project Vercel — kuncinya ada di tab **AI Gateway** project yang sama.
+Lewat gateway itu satu kunci bisa memanggil Gemini, Claude, dan model lain, dan
+ada kredit gratis tiap bulan. Model default-nya Gemini Flash (murah); untuk naik
+kelas, set `AI_MODEL="anthropic/claude-sonnet-5"` tanpa mengubah kode.
+
+Alternatifnya, `ANTHROPIC_API_KEY` juga masih didukung untuk memanggil Anthropic
+langsung. Tanpa salah satu kunci itu aplikasi tetap berjalan normal — tab AI
+hanya menampilkan petunjuk cara mengaktifkannya.
+
+Pemakaian AI ditagih per penggunaan ke akun pemilik kunci, jadi perhitungkan
+biayanya kalau aplikasi ini dipakai banyak orang — isi `MANUAL_PAYMENT_GOPAY_NUMBER`
+atau `MAYAR_API_KEY` (lihat tabel di bawah) supaya pemakaian AI dibatasi kuota
+per plan dan biayanya tertutup dari langganan.
 
 ### Catatan performa
 
@@ -69,7 +76,9 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 
 | Variabel | Fungsi |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Mengaktifkan seluruh fitur AI. Tanpa ini, tab AI menampilkan petunjuk setup dan fitur lain tetap jalan. |
+| `AI_GATEWAY_API_KEY` | Mengaktifkan seluruh fitur AI lewat [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) — satu kunci untuk Gemini, Claude, dsb. Tanpa ini (dan tanpa `ANTHROPIC_API_KEY`), tab AI menampilkan petunjuk setup dan fitur lain tetap jalan. |
+| `ANTHROPIC_API_KEY` | Alternatif: memanggil Anthropic langsung tanpa gateway. Dipakai kalau `AI_GATEWAY_API_KEY` kosong. |
+| `AI_MODEL` | Ganti model tanpa ubah kode. Default `google/gemini-2.5-flash` (lewat gateway) atau `claude-sonnet-5` (langsung ke Anthropic). |
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
 | `MAYAR_API_KEY` | Mengaktifkan plan berbayar (Pro/Studio) lewat [Mayar](https://mayar.id). Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
 | `MAYAR_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook Mayar (`/api/billing/webhook/mayar?token=...`) supaya endpoint itu cuma menerima notifikasi asli dari Mayar. |
