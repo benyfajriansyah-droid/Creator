@@ -6,7 +6,7 @@ import type { ContentStatus, Platform } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { notify } from "@/lib/notify";
-import { DEFAULT_CHECKLIST, formatDateTime } from "@/lib/constants";
+import { DEFAULT_CHECKLIST, PLATFORMS, formatDateTime } from "@/lib/constants";
 import { parseDatetimeLocal } from "@/lib/time";
 
 function str(formData: FormData, key: string): string {
@@ -83,6 +83,7 @@ function contentFieldsFrom(formData: FormData, timeZone: string) {
     scheduledAt,
     tags: parseTags(formData),
     notes: optionalStr(formData, "notes"),
+    sourceText: optionalStr(formData, "sourceText"),
     postUrl: optionalStr(formData, "postUrl"),
   };
 }
@@ -397,6 +398,70 @@ export async function saveIdeaAsContent(input: {
   });
 
   revalidateAll(item.id);
+  return { id: item.id };
+}
+
+/**
+ * Saves one AI-repurposed piece as a new content item, linked back to the
+ * piece it came from. The target platform comes from the suggestion, so it's
+ * paired with one of this user's accounts on that platform when there is one.
+ */
+export async function saveRepurposedContent(input: {
+  sourceId: string;
+  title: string;
+  platform?: string;
+  format?: string;
+  hook?: string;
+  body?: string;
+  angle?: string;
+  tags?: string[];
+}) {
+  const user = await requireUser();
+  const title = input.title.trim();
+  if (!title) throw new Error("Judul konten wajib diisi");
+
+  const source = await prisma.contentItem.findFirst({
+    where: { id: input.sourceId, userId: user.id },
+    select: { id: true, title: true },
+  });
+  if (!source) throw new Error("Konten asal tidak ditemukan");
+
+  const platform = PLATFORMS.includes(input.platform as Platform)
+    ? (input.platform as Platform)
+    : "INSTAGRAM";
+
+  const account = await prisma.socialAccount.findFirst({
+    where: { userId: user.id, platform, archived: false },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  const item = await prisma.contentItem.create({
+    data: {
+      userId: user.id,
+      accountId: account?.id ?? null,
+      sourceId: source.id,
+      title,
+      hook: input.hook?.trim() || null,
+      description: input.angle?.trim() || null,
+      sourceText: input.body?.trim() || null,
+      platform,
+      contentType: input.format?.trim() || "Lainnya",
+      status: "IDEA",
+      tags: (input.tags ?? [])
+        .map((t) => t.trim().replace(/^#/, ""))
+        .filter(Boolean)
+        .slice(0, 12),
+      notes: `Turunan AI dari "${source.title}".`,
+      checklist: {
+        create: DEFAULT_CHECKLIST.map((label, position) => ({ label, position })),
+      },
+    },
+    select: { id: true },
+  });
+
+  revalidateAll(item.id);
+  revalidatePath(`/content/${source.id}`);
   return { id: item.id };
 }
 

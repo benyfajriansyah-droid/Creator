@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
@@ -8,6 +9,7 @@ import MetricsForm from "@/components/MetricsForm";
 import Checklist from "@/components/Checklist";
 import DeleteButton from "@/components/DeleteButton";
 import ContentAssist from "@/components/ai/ContentAssist";
+import Repurpose from "@/components/ai/Repurpose";
 import { VerdictBadge, AccountDot } from "@/components/ContentCard";
 import { isAiConfigured } from "@/lib/ai";
 import { Badge, Card, SectionHeading } from "@/components/ui";
@@ -36,6 +38,11 @@ export default async function ContentDetailPage({
       include: {
         account: true,
         checklist: { orderBy: { position: "asc" } },
+        source: { select: { id: true, title: true } },
+        derived: {
+          select: { id: true, title: true, platform: true },
+          orderBy: { createdAt: "asc" },
+        },
       },
     }),
     prisma.socialAccount.findMany({
@@ -71,6 +78,17 @@ export default async function ContentDetailPage({
             {item.status === "PUBLISHED" && <VerdictBadge score={score} />}
             <AccountDot account={item.account} />
           </div>
+          {item.source && (
+            <p className="mt-2 text-xs text-[var(--text-subtle)]">
+              Turunan dari{" "}
+              <Link
+                href={`/content/${item.source.id}`}
+                className="text-[var(--accent)] hover:underline"
+              >
+                {item.source.title}
+              </Link>
+            </p>
+          )}
           {item.scheduledAt && item.status !== "PUBLISHED" && (
             <p className="mt-2 text-sm text-[var(--text-muted)]">
               🗓 Tayang {formatDateTime(item.scheduledAt, user.timeZone)} ·{" "}
@@ -130,6 +148,42 @@ export default async function ContentDetailPage({
                 configured={isAiConfigured()}
                 isPublished={item.status === "PUBLISHED"}
               />
+            </Card>
+          </section>
+
+          <section>
+            <SectionHeading
+              title="Pecah jadi konten lain"
+              description="Ubah konten ini jadi versi untuk platform atau format lain."
+            />
+            <Card className="p-4">
+              <Repurpose
+                contentId={item.id}
+                configured={isAiConfigured()}
+                hasSourceText={Boolean(item.sourceText?.trim())}
+              />
+              {item.derived.length > 0 && (
+                <div className="mt-4 border-t border-[var(--border)] pt-3">
+                  <p className="text-xs font-medium text-[var(--text-muted)]">
+                    Sudah dipecah jadi {item.derived.length} konten
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {item.derived.map((child) => (
+                      <li key={child.id}>
+                        <Link
+                          href={`/content/${child.id}`}
+                          className="text-sm text-[var(--accent)] hover:underline"
+                        >
+                          {child.title}
+                        </Link>{" "}
+                        <span className="text-xs text-[var(--text-subtle)]">
+                          · {PLATFORM_LABEL[child.platform]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </Card>
           </section>
 

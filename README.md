@@ -25,6 +25,9 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     membangun kepercayaan, sampai mendorong konversi.
   - **Bantuan per konten** — variasi hook, draft script, caption + hashtag, dan
     evaluasi konten yang sudah tayang.
+  - **Pecah jadi konten lain (repurposing)** — tempel naskah/transkrip aslinya,
+    lalu ubah satu konten jadi beberapa versi untuk platform atau format lain.
+    Tiap turunan bisa langsung disimpan ke papan, dan tetap tertaut ke konten asalnya.
 - **Tema terang & gelap.**
 - **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis/Pro/Studio,
   dan pembayaran lewat [lynk.id](https://lynk.id) atau transfer manual.

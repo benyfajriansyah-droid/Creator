@@ -117,6 +117,63 @@ export const FUNNEL_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+const repurposedSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Judul turunan yang spesifik untuk platform tujuan." },
+    platform: {
+      type: "string",
+      enum: ["YOUTUBE", "INSTAGRAM", "TIKTOK", "TWITTER", "LINKEDIN", "FACEBOOK", "OTHER"],
+      description: "Platform tujuan potongan ini.",
+    },
+    format: { type: "string", enum: [...FORMAT_VALUES] },
+    hook: { type: "string", description: "Kalimat pembuka khusus untuk platform tujuan." },
+    body: {
+      type: "string",
+      description:
+        "Isi siap pakai: script pendek, teks carousel per slide, atau caption — sesuaikan dengan formatnya. Tulis lengkap, bukan ringkasan.",
+    },
+    tags: {
+      type: "array",
+      description: "2-4 tag tema, huruf kecil, tanpa tanda pagar.",
+      items: { type: "string" },
+    },
+    angle: {
+      type: "string",
+      description:
+        "Satu kalimat: bagian mana dari konten asli yang diambil, dan kenapa sudut itu cocok untuk platform tujuan.",
+    },
+  },
+  required: ["title", "platform", "format", "hook", "body", "tags", "angle"],
+  additionalProperties: false,
+} as const;
+
+export const REPURPOSE_SCHEMA = {
+  type: "object",
+  properties: {
+    reading: {
+      type: "string",
+      description:
+        "1-2 kalimat: inti konten asli dan bagian mana yang paling layak dipecah ulang.",
+    },
+    pieces: { type: "array", items: repurposedSchema },
+  },
+  required: ["reading", "pieces"],
+  additionalProperties: false,
+} as const;
+
+export type RepurposedPiece = {
+  title: string;
+  platform: string;
+  format: string;
+  hook: string;
+  body: string;
+  tags: string[];
+  angle: string;
+};
+
+export type RepurposeResult = { reading: string; pieces: RepurposedPiece[] };
+
 export type GeneratedIdea = {
   title: string;
   hook: string;

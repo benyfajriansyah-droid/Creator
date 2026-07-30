@@ -152,6 +152,16 @@ model ContentItem {
   postUrl     String?
   notes       String?
 
+  /// The finished script, transcript or caption. Repurposing reads this to
+  /// rewrite the piece for another platform or format, so it needs the real
+  /// wording rather than just the brief.
+  sourceText String?
+
+  /// Set on pieces spun out of another one, so both sides can show the link.
+  sourceId String?
+  source   ContentItem?  @relation("Repurpose", fields: [sourceId], references: [id], onDelete: SetNull)
+  derived  ContentItem[] @relation("Repurpose")
+
   views      Int?
   likes      Int?
   comments   Int?
@@ -171,6 +181,7 @@ model ContentItem {
   @@index([userId, status])
   @@index([userId, scheduledAt])
   @@index([accountId])
+  @@index([sourceId])
 }
 
 model ChecklistItem {

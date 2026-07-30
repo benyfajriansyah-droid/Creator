@@ -38,6 +38,29 @@ const NOT_FOR_YOU = [
   "Butuh alur approval bertingkat untuk tim besar",
 ];
 
+const AI_ABILITIES = [
+  {
+    title: "Tanya AI",
+    desc: "Tanya apa saja soal strategi kontenmu, dijawab merujuk angkamu.",
+  },
+  {
+    title: "Ide Konten",
+    desc: "Ide lengkap dengan hook, outline, dan alasan kenapa cocok. Bisa langsung disimpan ke papan.",
+  },
+  {
+    title: "Pecah jadi konten lain",
+    desc: "Tempel naskah aslinya, lalu ubah satu konten jadi beberapa versi untuk platform dan format lain.",
+  },
+  {
+    title: "Bantuan per konten",
+    desc: "Variasi hook, draft script, caption + hashtag, dan evaluasi konten yang sudah tayang.",
+  },
+  {
+    title: "Funnel TOFU/MOFU/BOFU",
+    desc: "Rangkaian konten dari menarik penonton baru sampai mendorong konversi.",
+  },
+];
+
 const FAQ = [
   {
     q: "Kontennya bisa langsung kepost otomatis ke Instagram/TikTok?",
@@ -205,13 +228,16 @@ export default async function LandingPage() {
               judul dan angka kontenmu sendiri.
             </p>
             <div className="mt-8 grid gap-3 text-left sm:grid-cols-2">
-              {[
-                ["Tanya AI", "Tanya apa saja soal strategi kontenmu, dijawab merujuk angkamu."],
-                ["Ide Konten", "Ide lengkap dengan hook, outline, dan alasan kenapa cocok. Bisa langsung disimpan ke papan."],
-                ["Funnel TOFU/MOFU/BOFU", "Rangkaian konten dari menarik penonton baru sampai mendorong konversi."],
-                ["Bantuan per konten", "Variasi hook, draft script, caption + hashtag, dan evaluasi konten yang sudah tayang."],
-              ].map(([title, desc]) => (
-                <Card key={title} className="p-4">
+              {AI_ABILITIES.map(({ title, desc }, i) => (
+                <Card
+                  key={title}
+                  // An odd count would leave the last card stranded half-width.
+                  className={`p-4 ${
+                    i === AI_ABILITIES.length - 1 && AI_ABILITIES.length % 2 === 1
+                      ? "sm:col-span-2"
+                      : ""
+                  }`}
+                >
                   <h3 className="text-sm font-semibold">{title}</h3>
                   <p className="mt-1 text-sm text-[var(--text-muted)]">{desc}</p>
                 </Card>

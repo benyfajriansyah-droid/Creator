@@ -164,6 +164,19 @@ export default function ContentForm({
         />
       </Field>
 
+      <Field
+        label="Naskah / transkrip"
+        hint="Tempel script, transkrip, atau caption final di sini. Ini yang dibaca AI kalau kamu mau memecah konten ini jadi format lain."
+      >
+        <textarea
+          name="sourceText"
+          rows={5}
+          defaultValue={item?.sourceText ?? ""}
+          placeholder="Hai, hari ini gue mau bahas…"
+          className={inputStyles}
+        />
+      </Field>
+
       <Field label="Catatan">
         <textarea
           name="notes"
