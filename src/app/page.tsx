@@ -2,9 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { PLAN_AI_QUOTA, PLAN_LABEL, PLAN_PRICE } from "@/lib/billing";
+import {
+  LYNK_CHECKOUT_URL,
+  PLAN_AI_QUOTA,
+  PLAN_LABEL,
+  PLAN_PRICE,
+} from "@/lib/billing";
 import { formatRupiah } from "@/lib/constants";
-import { Badge, ButtonLink, Card } from "@/components/ui";
+import { Badge, ButtonLink, Card, buttonStyles } from "@/components/ui";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
@@ -307,11 +312,11 @@ export default async function LandingPage() {
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
             <PlanCard
               name={PLAN_LABEL.FREE}
               price={PLAN_PRICE.FREE}
-              tagline="Buat yang baru mau rapiin alur kontennya."
+              tagline="Coba dulu semua fitur perencanaannya, tanpa batas waktu."
               features={[
                 "Papan konten & kalender tanpa batas",
                 "Multi akun sosmed",
@@ -321,38 +326,31 @@ export default async function LandingPage() {
               ]}
               excluded={["Asisten AI"]}
               cta="Mulai Gratis"
+              href="/register"
               variant="secondary"
             />
             <PlanCard
               featured
               name={PLAN_LABEL.PRO}
               price={PLAN_PRICE.PRO}
-              tagline="Buat creator yang posting rutin tiap minggu."
+              tagline="Buat creator yang posting rutin dan mau dibantu AI."
               features={[
                 "Semua fitur Gratis",
                 `Asisten AI — ${PLAN_AI_QUOTA.PRO} aksi/bulan`,
                 "Ide konten, hook, script & caption",
+                "Pecah satu konten jadi beberapa versi",
                 "Funnel TOFU/MOFU/BOFU",
                 "Evaluasi konten yang sudah tayang",
               ]}
-              cta={`Coba ${PLAN_LABEL.PRO}`}
-            />
-            <PlanCard
-              name={PLAN_LABEL.STUDIO}
-              price={PLAN_PRICE.STUDIO}
-              tagline="Buat yang pegang banyak akun atau produksi tiap hari."
-              features={[
-                `Semua fitur ${PLAN_LABEL.PRO}`,
-                `Asisten AI — ${PLAN_AI_QUOTA.STUDIO} aksi/bulan`,
-                "Cocok untuk beberapa akun sekaligus",
-              ]}
-              cta={`Coba ${PLAN_LABEL.STUDIO}`}
-              variant="secondary"
+              cta="Langganan Pro"
+              href={LYNK_CHECKOUT_URL}
+              external
             />
           </div>
-          <p className="mt-6 text-center text-xs text-[var(--text-subtle)]">
+          <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-[var(--text-subtle)]">
             Satu &ldquo;aksi AI&rdquo; = sekali generate — misalnya satu set ide konten, satu
-            draft script, atau satu jawaban di Tanya AI.
+            draft script, atau satu jawaban di Tanya AI. Pembayaran Pro diproses lewat
+            lynk.id, dan akunmu diaktifkan setelah pembayarannya masuk.
           </p>
         </section>
 
@@ -495,6 +493,8 @@ function PlanCard({
   features,
   excluded = [],
   cta,
+  href,
+  external = false,
   variant = "primary",
   featured = false,
 }: {
@@ -504,6 +504,9 @@ function PlanCard({
   features: string[];
   excluded?: string[];
   cta: string;
+  /** Either an in-app route or, for the paid plan, the lynk.id checkout. */
+  href: string;
+  external?: boolean;
   variant?: "primary" | "secondary";
   featured?: boolean;
 }) {
@@ -540,9 +543,20 @@ function PlanCard({
           </li>
         ))}
       </ul>
-      <ButtonLink href="/register" variant={variant} className="mt-6 w-full">
-        {cta}
-      </ButtonLink>
+      {external ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${buttonStyles[variant]} mt-6 w-full`}
+        >
+          {cta}
+        </a>
+      ) : (
+        <ButtonLink href={href} variant={variant} className="mt-6 w-full">
+          {cta}
+        </ButtonLink>
+      )}
     </Card>
   );
 }

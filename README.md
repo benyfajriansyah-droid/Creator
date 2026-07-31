@@ -29,8 +29,8 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     lalu ubah satu konten jadi beberapa versi untuk platform atau format lain.
     Tiap turunan bisa langsung disimpan ke papan, dan tetap tertaut ke konten asalnya.
 - **Tema terang & gelap.**
-- **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis/Pro/Studio,
-  dan pembayaran lewat [lynk.id](https://lynk.id) atau transfer manual.
+- **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis dan Pro,
+  dengan pembayaran lewat [lynk.id](https://lynk.id).
 
 ## Yang belum ada
 
@@ -66,9 +66,9 @@ langsung. Tanpa salah satu kunci itu aplikasi tetap berjalan normal — tab AI
 hanya menampilkan petunjuk cara mengaktifkannya.
 
 Pemakaian AI ditagih per penggunaan ke akun pemilik kunci, jadi perhitungkan
-biayanya kalau aplikasi ini dipakai banyak orang — isi `MANUAL_PAYMENT_GOPAY_NUMBER`
-atau `LYNK_PRO_URL` (lihat tabel di bawah) supaya pemakaian AI dibatasi kuota
-per plan dan biayanya tertutup dari langganan.
+biayanya kalau aplikasi ini dipakai banyak orang — isi `ADMIN_EMAIL` (lihat tabel
+di bawah) supaya pemakaian AI dibatasi kuota per plan dan biayanya tertutup dari
+langganan.
 
 ### Catatan performa
 
@@ -83,33 +83,28 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `ANTHROPIC_API_KEY` | Alternatif: memanggil Anthropic langsung tanpa gateway. Dipakai kalau `AI_GATEWAY_API_KEY` kosong. |
 | `AI_MODEL` | Ganti model tanpa ubah kode. Default `google/gemini-2.5-flash` (lewat gateway) atau `claude-sonnet-5` (langsung ke Anthropic). |
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
-| `LYNK_PRO_URL`, `LYNK_STUDIO_URL` | Link checkout produk di [lynk.id](https://lynk.id) untuk tiap plan berbayar. Tanpa ini, kuota AI tidak dibatasi dan tombol upgrade disembunyikan. |
-| `LYNK_WEBHOOK_TOKEN` | Token rahasia buatan sendiri, dipasang di URL webhook lynk.id (`/api/billing/webhook/lynk?token=...`) supaya endpoint itu cuma menerima notifikasi asli. |
-| `MANUAL_PAYMENT_GOPAY_NUMBER` | Nomor GoPay yang ditampilkan di halaman Billing buat transfer manual. Berguna sebelum akun lynk.id kelar diverifikasi, dan sebagai cadangan kalau ada pembayaran yang gagal dicocokkan otomatis. |
-| `ADMIN_EMAIL` | Wajib diisi kalau pakai pembayaran manual — email akun yang boleh buka `/admin/orders` buat konfirmasi pembayaran masuk secara manual. |
+| `ADMIN_EMAIL` | Email akun yang boleh buka `/admin/plans` untuk mengaktifkan plan pelanggan. Selama kosong, kuota AI tidak dibatasi sama sekali — karena tanpa admin tidak ada yang bisa mengaktifkan siapa pun, jadi membatasi malah mengunci semua akun tanpa jalan keluar. |
 
-### Cara menyiapkan pembayaran lynk.id
+### Cara kerja pembayaran
 
-1. Buat satu produk per plan berbayar di dashboard lynk.id (Pro dan Studio),
-   dengan harga yang sama seperti di `PLAN_PRICE` (`src/lib/billing.ts`).
-2. Salin link checkout tiap produk ke `LYNK_PRO_URL` dan `LYNK_STUDIO_URL`.
-3. Buat token acak sendiri, isi ke `LYNK_WEBHOOK_TOKEN`, lalu daftarkan
-   `https://domainmu/api/billing/webhook/lynk?token=<token itu>` sebagai URL
-   webhook di dashboard lynk.id.
+Pembayaran ditangani sepenuhnya oleh [lynk.id](https://lynk.id) — aplikasi ini
+tidak pernah memproses uang dan tidak diberi tahu saat ada yang membayar. Karena
+itu alurnya:
 
-Alurnya: pembeli diarahkan ke link lynk.id, dan begitu pembayarannya masuk,
-webhook mencocokkan email pembeli dengan akun yang punya order pending, lalu
-mengaktifkan plannya.
+1. Calon pelanggan klik **Langganan Pro** di landing page atau halaman Billing,
+   lalu membayar di halaman checkout lynk.id.
+2. Dia mengabari kamu, menyertakan email yang dipakai mendaftar di aplikasi ini.
+3. Kamu buka `/admin/plans`, masukkan email itu, klik **Aktifkan Pro**. Plannya
+   langsung aktif 30 hari dan kuota AI-nya di-reset.
 
-**Catatan:** dokumentasi lynk.id memblokir automated fetching, jadi nama field
-persis di payload webhook belum pernah diverifikasi ke sistem aslinya.
-`applyLynkWebhookPayload` karena itu sengaja dibuat toleran — ia mencari email
-dan status pembayaran dari beberapa kemungkinan nama field, di kedalaman berapa
-pun. Kalau tetap tidak cocok, ordernya **dibiarkan pending** (bukan diaktifkan)
-dan bisa dikonfirmasi manual lewat `/admin/orders`. Jadi payload yang tak
-dikenali tidak akan pernah membagikan plan berbayar secara keliru. Setelah
-transaksi pertama, cek log webhooknya dan sesuaikan `EMAIL_KEYS`/`STATUS_KEYS`
-di `src/lib/billing.ts` kalau perlu.
+Langganan tidak diperpanjang otomatis: setelah 30 hari plannya lewat masa aktif
+dan pelanggan perlu membayar lagi, lalu diaktifkan ulang dengan cara yang sama.
+Halaman `/admin/plans` menampilkan siapa saja yang aktif beserta tanggal
+habisnya, jadi perpanjangan bisa dipantau dari situ.
+
+Link checkoutnya ada di `LYNK_CHECKOUT_URL` (`src/lib/billing.ts`) — bukan
+environment variable, karena itu tautan publik biasa. Ganti di situ kalau
+produknya dibuat ulang di lynk.id.
 
 ## Menjalankan secara lokal
 

@@ -1,85 +1,39 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
-import {
-  confirmManualOrder,
-  createManualOrder,
-  isAdmin,
-  isBillingConfigured,
-  isManualPaymentConfigured,
-  startLynkCheckout,
-  type PlanUpgrade,
-} from "@/lib/billing";
+import { activatePlanForEmail, isAdmin } from "@/lib/billing";
 
-export type CheckoutState = { error?: string };
+export type ActivateState = { error?: string; success?: string };
 
-export async function startCheckout(
-  _prev: CheckoutState,
+/**
+ * Operator-only. Payment is collected on lynk.id, which tells the app nothing,
+ * so a paid customer is joined to their account here by email.
+ */
+export async function activatePlan(
+  _prev: ActivateState,
   formData: FormData
-): Promise<CheckoutState> {
+): Promise<ActivateState> {
   const user = await requireUser();
+  if (!isAdmin(user.email)) return { error: "Tidak diizinkan." };
 
-  if (!isBillingConfigured()) {
-    return { error: "Pembayaran belum aktif. Coba lagi nanti." };
-  }
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Email wajib diisi." };
 
   const plan = formData.get("plan");
-  if (plan !== "PRO" && plan !== "STUDIO") {
-    return { error: "Plan tidak valid." };
-  }
-
-  let paymentLink: string;
-  try {
-    paymentLink = await startLynkCheckout(user.id, plan as PlanUpgrade);
-  } catch (error) {
-    console.error("Gagal memulai checkout lynk.id", error);
-    return { error: error instanceof Error ? error.message : "Gagal membuka halaman pembayaran." };
-  }
-
-  redirect(paymentLink);
-}
-
-export async function requestManualPayment(
-  _prev: CheckoutState,
-  formData: FormData
-): Promise<CheckoutState> {
-  const user = await requireUser();
-
-  if (!isManualPaymentConfigured()) {
-    return { error: "Pembayaran manual belum aktif." };
-  }
-
-  const plan = formData.get("plan");
-  if (plan !== "PRO" && plan !== "STUDIO") {
-    return { error: "Plan tidak valid." };
-  }
-
-  await createManualOrder(user.id, plan as PlanUpgrade);
-  revalidatePath("/billing");
-  return {};
-}
-
-export async function confirmManualPayment(
-  _prev: CheckoutState,
-  formData: FormData
-): Promise<CheckoutState> {
-  const user = await requireUser();
-  if (!isAdmin(user.email)) {
-    return { error: "Tidak diizinkan." };
-  }
-
-  const orderId = String(formData.get("orderId") ?? "");
-  if (!orderId) return { error: "Order tidak valid." };
+  if (plan !== "PRO" && plan !== "FREE") return { error: "Plan tidak valid." };
 
   try {
-    await confirmManualOrder(orderId);
+    const target = await activatePlanForEmail(email, plan);
+    revalidatePath("/admin/plans");
+    return {
+      success:
+        plan === "FREE"
+          ? `${target.name} (${target.email}) dikembalikan ke plan Gratis.`
+          : `${target.name} (${target.email}) sekarang aktif di plan Pro selama 30 hari.`,
+    };
   } catch (error) {
-    console.error("Gagal konfirmasi order manual", error);
-    return { error: error instanceof Error ? error.message : "Gagal konfirmasi order." };
+    console.error("Gagal mengaktifkan plan", error);
+    return { error: error instanceof Error ? error.message : "Gagal mengaktifkan plan." };
   }
-
-  revalidatePath("/admin/orders");
-  return {};
 }

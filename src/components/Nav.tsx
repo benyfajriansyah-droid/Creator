@@ -71,10 +71,10 @@ export function Sidebar({
         ))}
         {showAdmin && (
           <NavItem
-            href="/admin/orders"
-            label="Konfirmasi Bayar"
+            href="/admin/plans"
+            label="Aktifkan Plan"
             icon={<CardIcon />}
-            active={isActive(pathname, "/admin/orders")}
+            active={isActive(pathname, "/admin/plans")}
           />
         )}
       </nav>
