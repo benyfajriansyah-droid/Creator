@@ -25,6 +25,10 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     membangun kepercayaan, sampai mendorong konversi.
   - **Bantuan per konten** — variasi hook, draft script, caption + hashtag, dan
     evaluasi konten yang sudah tayang.
+  - **Analisa otomatis** — begitu konten tayang dan angka performanya diisi, AI
+    langsung menulis evaluasinya sendiri: apa yang jalan, apa yang perlu diubah,
+    dan satu langkah berikutnya. Tersimpan di kontennya, jadi tidak dibuat ulang
+    setiap halaman dibuka.
   - **Pecah jadi konten lain (repurposing)** — tempel naskah/transkrip aslinya,
     lalu ubah satu konten jadi beberapa versi untuk platform atau format lain.
     Tiap turunan bisa langsung disimpan ke papan, dan tetap tertaut ke konten asalnya.

@@ -170,6 +170,12 @@ model ContentItem {
   /// Set once the pre-publish reminder push has gone out, so it only fires once.
   reminderSentAt DateTime?
 
+  /// The AI's written evaluation of how this piece performed, generated on its
+  /// own once the metrics are filled in. Stored rather than produced on every
+  /// visit, because each run costs the account a slice of its AI quota.
+  aiReview     String?
+  aiReviewedAt DateTime?
+
   checklist ChecklistItem[]
 
   createdAt DateTime @default(now())

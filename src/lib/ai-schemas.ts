@@ -174,6 +174,43 @@ export type RepurposedPiece = {
 
 export type RepurposeResult = { reading: string; pieces: RepurposedPiece[] };
 
+export const REVIEW_SCHEMA = {
+  type: "object",
+  properties: {
+    verdict: {
+      type: "string",
+      description:
+        "Satu kalimat kesimpulan: konten ini jalan atau tidak, dan seberapa jauh dari kebiasaan creator ini.",
+    },
+    worked: {
+      type: "array",
+      description:
+        "2-3 hal yang kemungkinan besar bikin konten ini dapat angka segitu. Kaitkan ke metrik spesifiknya.",
+      items: { type: "string" },
+    },
+    improve: {
+      type: "array",
+      description:
+        "2-3 hal konkret yang bisa diubah kalau bikin konten serupa lagi. Bukan pujian, bukan saran umum.",
+      items: { type: "string" },
+    },
+    nextAction: {
+      type: "string",
+      description:
+        "Satu langkah paling konkret yang sebaiknya creator lakukan berikutnya berdasarkan konten ini.",
+    },
+  },
+  required: ["verdict", "worked", "improve", "nextAction"],
+  additionalProperties: false,
+} as const;
+
+export type ContentReview = {
+  verdict: string;
+  worked: string[];
+  improve: string[];
+  nextAction: string;
+};
+
 export type GeneratedIdea = {
   title: string;
   hook: string;

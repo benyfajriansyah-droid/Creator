@@ -53,6 +53,10 @@ const AI_ABILITIES = [
     desc: "Ide lengkap dengan hook, outline, dan alasan kenapa cocok. Bisa langsung disimpan ke papan.",
   },
   {
+    title: "Analisa otomatis",
+    desc: "Isi angka performanya, dan evaluasinya ditulis sendiri — apa yang jalan, apa yang perlu diubah, dan langkah berikutnya.",
+  },
+  {
     title: "Pecah jadi konten lain",
     desc: "Tempel naskah aslinya, lalu ubah satu konten jadi beberapa versi untuk platform dan format lain.",
   },
@@ -337,10 +341,10 @@ export default async function LandingPage() {
               features={[
                 "Semua fitur Gratis",
                 `Asisten AI — ${PLAN_AI_QUOTA.PRO} aksi/bulan`,
+                "Analisa otomatis tiap konten yang tayang",
                 "Ide konten, hook, script & caption",
                 "Pecah satu konten jadi beberapa versi",
                 "Funnel TOFU/MOFU/BOFU",
-                "Evaluasi konten yang sudah tayang",
               ]}
               cta="Langganan Pro"
               href={LYNK_CHECKOUT_URL}

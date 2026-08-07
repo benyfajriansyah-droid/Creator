@@ -10,6 +10,7 @@ import Checklist from "@/components/Checklist";
 import DeleteButton from "@/components/DeleteButton";
 import ContentAssist from "@/components/ai/ContentAssist";
 import Repurpose from "@/components/ai/Repurpose";
+import AutoReview from "@/components/ai/AutoReview";
 import { VerdictBadge, AccountDot } from "@/components/ContentCard";
 import { isAiConfigured } from "@/lib/ai";
 import { Badge, Card, SectionHeading } from "@/components/ui";
@@ -137,6 +138,24 @@ export default async function ContentDetailPage({
         </div>
 
         <div className="space-y-6">
+          {item.status === "PUBLISHED" && (
+            <section>
+              <SectionHeading
+                title="Analisa otomatis"
+                description="Evaluasi performa konten ini, dibanding rata-ratamu sendiri."
+              />
+              <Card className="p-4">
+                <AutoReview
+                  contentId={item.id}
+                  configured={isAiConfigured()}
+                  ready={Boolean(item.views)}
+                  storedReview={item.aiReview}
+                  reviewedAt={item.aiReviewedAt?.toISOString() ?? null}
+                />
+              </Card>
+            </section>
+          )}
+
           <section>
             <SectionHeading
               title="Bantuan AI"
