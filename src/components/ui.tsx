@@ -123,15 +123,29 @@ export const inputStyles =
 export function Field({
   label,
   hint,
+  action,
   children,
 }: {
   label: string;
   hint?: string;
+  /** Optional control shown opposite the label, e.g. a "forgot password?" link. */
+  action?: ReactNode;
   children: ReactNode;
 }) {
+  const labelText = (
+    <span className="block text-sm font-medium text-[var(--text)]">{label}</span>
+  );
+
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[var(--text)]">{label}</span>
+      {action ? (
+        <span className="mb-1.5 flex items-baseline justify-between gap-3">
+          {labelText}
+          {action}
+        </span>
+      ) : (
+        <span className="mb-1.5 block">{labelText}</span>
+      )}
       {children}
       {hint && <span className="mt-1 block text-xs text-[var(--text-muted)]">{hint}</span>}
     </label>

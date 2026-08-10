@@ -18,9 +18,12 @@ function SubmitButton({ label }: { label: string }) {
 export default function AuthForm({
   mode,
   action,
+  justReset = false,
 }: {
   mode: "login" | "register";
   action: (state: AuthState, formData: FormData) => Promise<AuthState>;
+  /** Set after a successful password reset, so the redirect explains itself. */
+  justReset?: boolean;
 }) {
   const [state, formAction] = useActionState(action, {});
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +39,12 @@ export default function AuthForm({
           ? "Mulai kelola konten kamu dalam satu tempat."
           : "Selamat datang kembali."}
       </p>
+
+      {justReset && (
+        <p className="mb-5 rounded-lg border border-[var(--success-border)] bg-[var(--success-bg)] px-3 py-2 text-sm text-[var(--success)]">
+          Password kamu sudah diganti. Silakan masuk dengan yang baru.
+        </p>
+      )}
 
       <form action={formAction} className="space-y-4">
         {isRegister && (
@@ -64,6 +73,16 @@ export default function AuthForm({
         <Field
           label="Password"
           hint={isRegister ? "Minimal 8 karakter." : undefined}
+          action={
+            isRegister ? undefined : (
+              <Link
+                href="/forgot-password"
+                className="text-xs font-medium text-[var(--accent)] hover:underline"
+              >
+                Lupa password?
+              </Link>
+            )
+          }
         >
           <div className="relative">
             <input

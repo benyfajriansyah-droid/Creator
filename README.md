@@ -5,7 +5,8 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
 
 ## Fitur
 
-- **Login** — data konten terkunci per akun pengguna.
+- **Login** — data konten terkunci per akun pengguna, dengan reset password
+  lewat tautan sekali pakai yang berlaku 1 jam.
 - **Multi akun sosmed** — kelola Instagram, TikTok, YouTube, dll sekaligus. Tiap
   konten dilabeli akunnya, dengan warna penanda sendiri.
 - **Papan konten** — alur kerja Ide → Digarap → Siap Posting → Terjadwal → Tayang.
@@ -87,6 +88,8 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `ANTHROPIC_API_KEY` | Alternatif: memanggil Anthropic langsung tanpa gateway. Dipakai kalau `AI_GATEWAY_API_KEY` kosong. |
 | `AI_MODEL` | Ganti model tanpa ubah kode. Default `google/gemini-2.5-flash` (lewat gateway) atau `claude-sonnet-5` (langsung ke Anthropic). |
 | `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
+| `RESEND_API_KEY` | Mengaktifkan pengiriman email untuk reset password lewat [Resend](https://resend.com). Tanpa ini alur resetnya tetap ada, tapi tautannya dibuat manual oleh admin di `/admin/plans`. |
+| `EMAIL_FROM` | Alamat pengirim email. Default memakai alamat bersama milik Resend yang cukup untuk uji coba. |
 | `ADMIN_EMAIL` | Email akun yang boleh buka `/admin/plans` untuk mengaktifkan plan pelanggan. Selama kosong, kuota AI tidak dibatasi sama sekali — karena tanpa admin tidak ada yang bisa mengaktifkan siapa pun, jadi membatasi malah mengunci semua akun tanpa jalan keluar. |
 
 ### Cara kerja pembayaran

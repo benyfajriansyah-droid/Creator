@@ -5,6 +5,8 @@ import { isAdmin, PLAN_LABEL } from "@/lib/billing";
 import { Badge, Card, PageHeader, SectionHeading } from "@/components/ui";
 import { formatDateTime } from "@/lib/constants";
 import ActivatePlanForm from "@/components/billing/ActivatePlanForm";
+import ResetLinkForm from "@/components/billing/ResetLinkForm";
+import { isMailConfigured } from "@/lib/mail";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +43,24 @@ export default async function AdminPlansPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
-        <section>
-          <SectionHeading title="Aktifkan akun" />
-          <Card className="p-5">
-            <ActivatePlanForm />
-          </Card>
-        </section>
+        <div className="space-y-6">
+          <section>
+            <SectionHeading title="Aktifkan akun" />
+            <Card className="p-5">
+              <ActivatePlanForm />
+            </Card>
+          </section>
+
+          <section>
+            <SectionHeading
+              title="Reset password"
+              description="Buat tautan ganti password untuk pengguna yang lupa."
+            />
+            <Card className="p-5">
+              <ResetLinkForm mailEnabled={isMailConfigured()} />
+            </Card>
+          </section>
+        </div>
 
         <div className="space-y-6">
           <section>

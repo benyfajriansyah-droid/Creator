@@ -82,6 +82,7 @@ model User {
   notifications Notification[]
   aiThreads     AiThread[]
   orders        Order[]
+  resetTokens   PasswordResetToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -105,6 +106,24 @@ model Order {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// A one-shot ticket for setting a new password without being signed in.
+model PasswordResetToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 of the token, never the token itself — a leaked database row
+  /// shouldn't be enough to take over an account.
+  tokenHash String   @unique
+  expiresAt DateTime
+  /// Set the moment it's spent, so a link can't be replayed.
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
