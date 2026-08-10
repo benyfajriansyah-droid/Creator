@@ -213,6 +213,50 @@ export async function logMetrics(id: string, formData: FormData) {
   redirect(`/content/${id}?toast=metrics`);
 }
 
+/**
+ * Fills in the numbers for several published pieces in one pass. Opening a page
+ * per post is where recording metrics quietly stops happening — and once it
+ * stops, the scores, the insights and every AI feature have nothing to read.
+ *
+ * A row is only written when its views field was filled: leaving a row blank
+ * means "not now", not "set these to nothing".
+ */
+export async function logMetricsBulk(formData: FormData) {
+  const user = await requireUser();
+
+  const ids = formData
+    .getAll("id")
+    .map(String)
+    .filter((id) => str(formData, `views_${id}`) !== "");
+
+  if (ids.length === 0) redirect("/content/metrics?toast=empty");
+
+  // One query settles ownership for the whole batch.
+  const owned = await prisma.contentItem.findMany({
+    where: { id: { in: ids }, userId: user.id },
+    select: { id: true },
+  });
+
+  await prisma.$transaction(
+    owned.map(({ id }) =>
+      prisma.contentItem.update({
+        where: { id },
+        data: {
+          views: optionalNumber(formData, `views_${id}`),
+          likes: optionalNumber(formData, `likes_${id}`),
+          comments: optionalNumber(formData, `comments_${id}`),
+          shares: optionalNumber(formData, `shares_${id}`),
+          saves: optionalNumber(formData, `saves_${id}`),
+        },
+      })
+    )
+  );
+
+  revalidateAll();
+  revalidatePath("/content/metrics");
+  redirect(`/content/metrics?saved=${owned.length}`);
+}
+
 export async function deleteContent(id: string) {
   const user = await requireUser();
   const { count } = await prisma.contentItem.deleteMany({

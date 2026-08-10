@@ -41,6 +41,10 @@ export default async function ContentListPage({
 
   const scores = scoreContent(items);
 
+  const missingMetrics = await prisma.contentItem.count({
+    where: { userId: user.id, status: "PUBLISHED", views: null },
+  });
+
   const filterHref = (nextStatus?: string) => {
     const params = new URLSearchParams();
     if (nextStatus) params.set("status", nextStatus);
@@ -57,6 +61,16 @@ export default async function ContentListPage({
         description="Ide, jadwal, dan konten yang sudah tayang."
         action={<ButtonLink href="/content/new">+ Konten Baru</ButtonLink>}
       />
+
+      {missingMetrics > 0 && (
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 border-[var(--warning-border)] bg-[var(--warning-bg)] p-4">
+          <p className="text-sm text-[var(--text)]">
+            <strong className="font-medium">{missingMetrics} konten</strong> sudah tayang
+            tapi angkanya belum diisi — Worth It score dan asisten AI belum bisa menilainya.
+          </p>
+          <ButtonLink href="/content/metrics">Isi sekarang</ButtonLink>
+        </Card>
+      )}
 
       <form action="/content" className="mb-4">
         {statusFilter && <input type="hidden" name="status" value={statusFilter} />}

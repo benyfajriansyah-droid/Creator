@@ -8,10 +8,22 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
 /**
- * Fires two kinds of reminder:
+ * How long to leave a published piece alone before asking for its numbers, and
+ * how long to wait before asking again. Numbers settle over the first couple of
+ * days, and nobody wants this every morning.
+ */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const METRICS_GRACE_DAYS = 3;
+const METRICS_REMIND_EVERY_DAYS = 3;
+
+/**
+ * Fires three kinds of reminder:
  *   1. Per-item nudge, `reminderLeadMinutes` before a scheduled slot.
  *   2. A once-a-day digest of everything due today.
- * Both are idempotent, so running this more often than needed is harmless.
+ *   3. A nudge to fill in metrics for pieces that went out days ago and still
+ *      have none — without those numbers the scores, insights and AI features
+ *      all have nothing to work with.
+ * All are idempotent, so running this more often than needed is harmless.
  */
 export async function GET(request: Request) {
   // Works with no configuration; set CRON_SECRET to lock the endpoint down.
@@ -34,6 +46,7 @@ export async function GET(request: Request) {
 
   let reminders = 0;
   let digests = 0;
+  let metricsNudges = 0;
 
   for (const user of users) {
     const windowEnd = new Date(now.getTime() + user.reminderLeadMinutes * 60_000);
@@ -63,10 +76,43 @@ export async function GET(request: Request) {
       reminders += 1;
     }
 
+    // The digest switch doubles as the general "send me scheduled summaries"
+    // preference, so it silences the metrics nudge too.
     if (!user.dailyDigestEnabled) continue;
     if (hourIn(user.timeZone, now) !== user.dailyDigestHour) continue;
 
     const { start, end } = dayBounds(user.timeZone, now);
+
+    const missingMetrics = await prisma.contentItem.count({
+      where: {
+        userId: user.id,
+        status: "PUBLISHED",
+        views: null,
+        publishedAt: { lt: new Date(now.getTime() - METRICS_GRACE_DAYS * DAY_MS) },
+      },
+    });
+
+    if (missingMetrics > 0) {
+      const nudgedRecently = await prisma.notification.findFirst({
+        where: {
+          userId: user.id,
+          kind: "METRICS_REMINDER",
+          createdAt: { gte: new Date(now.getTime() - METRICS_REMIND_EVERY_DAYS * DAY_MS) },
+        },
+        select: { id: true },
+      });
+
+      if (!nudgedRecently) {
+        await notify({
+          userId: user.id,
+          kind: "METRICS_REMINDER",
+          title: "Angkanya belum diisi",
+          body: `${missingMetrics} konten sudah tayang tapi metriknya masih kosong. Tanpa angka itu, Worth It score dan asisten AI belum bisa menilai apa pun.`,
+          href: "/content/metrics",
+        });
+        metricsNudges += 1;
+      }
+    }
 
     // One digest per local day, guarded by checking for an existing one.
     const alreadySent = await prisma.notification.findFirst({
@@ -94,10 +140,10 @@ export async function GET(request: Request) {
         todays > 0
           ? `${todays} konten dijadwalkan hari ini. ${backlog} ide masih menunggu digarap.`
           : `Belum ada konten terjadwal hari ini. ${backlog} ide siap kamu garap.`,
-      href: "/",
+      href: "/dashboard",
     });
     digests += 1;
   }
 
-  return NextResponse.json({ ok: true, reminders, digests });
+  return NextResponse.json({ ok: true, reminders, digests, metricsNudges });
 }

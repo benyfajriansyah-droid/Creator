@@ -17,6 +17,9 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
 - **Worth It score** — engagement tiap konten dibandingkan dengan rata-rata kamu,
   lalu dilabeli Worth It / Rata-rata / Kurang Worth It.
 - **Insight** — perbandingan performa per akun, platform, tipe konten, dan tag.
+- **Isi metrik massal** — satu halaman berisi semua konten tayang yang angkanya
+  belum dicatat, diisi sekaligus. Kalau ada yang terlewat beberapa hari, aplikasi
+  mengingatkan lewat notifikasi.
 - **Asisten AI** — tab AI yang membaca data performa kontenmu sendiri:
   - **Tanya AI** — tanya apa saja soal strategi konten; jawabannya merujuk angka
     dan judul konten kamu, bukan saran umum.
