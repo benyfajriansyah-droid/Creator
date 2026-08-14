@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import { scoreContent, engagementRateOf, formatEngagement } from "@/lib/scoring";
 import { PageHeader, Card, EmptyState, SectionHeading, StatTile, Badge } from "@/components/ui";
+import { analysePostingTimes, type TimingBucket } from "@/lib/timing";
 import { ContentRow } from "@/components/ContentCard";
 import { PLATFORM_LABEL, formatNumber, formatRupiah } from "@/lib/constants";
 
@@ -126,6 +127,8 @@ export default async function InsightsPage() {
     .filter((r) => r.score.engagementRate !== null)
     .sort((a, b) => (b.score.engagementRate ?? 0) - (a.score.engagementRate ?? 0));
 
+  const timing = analysePostingTimes(items, user.timeZone);
+
   const totalViews = items.reduce((s, i) => s + (i.views ?? 0), 0);
   const totalRevenue = items.reduce((s, i) => s + (i.revenue ?? 0), 0);
   const measured = items.map(engagementRateOf).filter((r): r is number => r !== null);
@@ -179,6 +182,44 @@ export default async function InsightsPage() {
           </Card>
         </section>
       </div>
+
+      <section className="mt-8">
+        <SectionHeading
+          title="Waktu posting"
+          description="Kapan kontenmu sendiri paling nendang — bukan patokan umum."
+        />
+        <Card className="p-4">
+          {!timing.enough ? (
+            <p className="text-sm text-[var(--text-muted)]">
+              Baru {timing.sampleSize} konten yang punya metrik dan tanggal tayang. Perlu
+              minimal 6 sebelum polanya bisa dipercaya — kalau kurang dari itu, yang
+              kelihatan cuma kebetulan.
+            </p>
+          ) : (
+            <>
+              {(timing.bestBlock || timing.bestDay) && (
+                <p className="mb-4 text-sm text-[var(--text)]">
+                  Dari {timing.sampleSize} konten, yang paling nendang biasanya tayang{" "}
+                  {timing.bestBlock && (
+                    <strong className="font-medium">
+                      {timing.bestBlock.label.toLowerCase()} ({timing.bestBlock.detail})
+                    </strong>
+                  )}
+                  {timing.bestBlock && timing.bestDay ? " dan hari " : ""}
+                  {timing.bestDay && (
+                    <strong className="font-medium">{timing.bestDay.label}</strong>
+                  )}
+                  .
+                </p>
+              )}
+              <div className="grid gap-6 sm:grid-cols-2">
+                <TimingList title="Per waktu" buckets={timing.byBlock} />
+                <TimingList title="Per hari" buckets={timing.byDay} />
+              </div>
+            </>
+          )}
+        </Card>
+      </section>
 
       <section className="mt-8">
         <SectionHeading title="Peringkat konten" description="Diurutkan dari engagement tertinggi." />
@@ -250,5 +291,53 @@ function BreakdownCard({
         )}
       </Card>
     </section>
+  );
+}
+
+/** Ranks buckets by engagement, muting the ones with too few posts to trust. */
+function TimingList({ title, buckets }: { title: string; buckets: TimingBucket[] }) {
+  const best = buckets.find((b) => b.ranked)?.avgEngagement ?? 0;
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">{title}</p>
+      <ul className="space-y-2.5">
+        {buckets.map((bucket) => (
+          <li key={bucket.key}>
+            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+              <span className="min-w-0 truncate">
+                {bucket.label}
+                {bucket.detail && (
+                  <span className="ml-1 text-xs text-[var(--text-subtle)]">
+                    {bucket.detail}
+                  </span>
+                )}
+              </span>
+              <span className="shrink-0 tabular-nums text-[var(--text-muted)]">
+                {formatEngagement(bucket.avgEngagement)}
+                <span className="ml-1 text-xs text-[var(--text-subtle)]">
+                  ({bucket.count})
+                </span>
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+              <div
+                className={`h-full rounded-full ${
+                  bucket.ranked ? "bg-[var(--accent)]" : "bg-[var(--border-strong)]"
+                }`}
+                style={{
+                  width: `${best > 0 ? Math.round((bucket.avgEngagement / best) * 100) : 0}%`,
+                }}
+              />
+            </div>
+            {!bucket.ranked && (
+              <p className="mt-1 text-xs text-[var(--text-subtle)]">
+                Baru {bucket.count} konten — belum cukup buat disimpulkan.
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

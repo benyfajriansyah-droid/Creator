@@ -65,3 +65,10 @@ export function hourIn(timeZone: string, now: Date): number {
     new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", hour12: false }).format(now)
   );
 }
+
+/** Day of week in `timeZone`, 0 = Sunday. */
+export function weekdayIn(timeZone: string, now: Date): number {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(now);
+  const index = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
+  return index === -1 ? 0 : index;
+}

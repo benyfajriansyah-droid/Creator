@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notify";
 import { formatTime } from "@/lib/constants";
-import { dayBounds, hourIn } from "@/lib/time";
+import { dayBounds, hourIn, weekdayIn } from "@/lib/time";
+import { generateWeeklyReview } from "@/lib/weekly-review";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+// Weekly reviews call a model, so this run can take a while.
+export const maxDuration = 60;
+
+/**
+ * How many weekly reviews to generate per run. Each is a model call, and the
+ * whole cron shares one timeout — whoever doesn't get one today is picked up on
+ * the next day's run, which is why the window below is two days wide.
+ */
+const WEEKLY_REVIEWS_PER_RUN = 3;
 
 /**
  * How long to leave a published piece alone before asking for its numbers, and
@@ -20,7 +29,8 @@ const METRICS_REMIND_EVERY_DAYS = 3;
  * Fires three kinds of reminder:
  *   1. Per-item nudge, `reminderLeadMinutes` before a scheduled slot.
  *   2. A once-a-day digest of everything due today.
- *   3. A nudge to fill in metrics for pieces that went out days ago and still
+ *   3. A weekly review written by the model, filed as a saved conversation.
+ *   4. A nudge to fill in metrics for pieces that went out days ago and still
  *      have none — without those numbers the scores, insights and AI features
  *      all have nothing to work with.
  * All are idempotent, so running this more often than needed is harmless.
@@ -47,6 +57,7 @@ export async function GET(request: Request) {
   let reminders = 0;
   let digests = 0;
   let metricsNudges = 0;
+  let weeklyReviews = 0;
 
   for (const user of users) {
     const windowEnd = new Date(now.getTime() + user.reminderLeadMinutes * 60_000);
@@ -114,6 +125,38 @@ export async function GET(request: Request) {
       }
     }
 
+    // Weekly review, on Monday or Tuesday so a capped run can still catch up.
+    if (weeklyReviews < WEEKLY_REVIEWS_PER_RUN) {
+      const weekday = weekdayIn(user.timeZone, now);
+      const sentThisWeek = await prisma.notification.findFirst({
+        where: {
+          userId: user.id,
+          kind: "WEEKLY_REVIEW",
+          createdAt: { gte: new Date(now.getTime() - 6 * DAY_MS) },
+        },
+        select: { id: true },
+      });
+
+      if ((weekday === 1 || weekday === 2) && !sentThisWeek) {
+        try {
+          const threadId = await generateWeeklyReview(user.id);
+          if (threadId) {
+            await notify({
+              userId: user.id,
+              kind: "WEEKLY_REVIEW",
+              title: "Rangkuman mingguanmu sudah siap",
+              body: "Apa yang terjadi minggu lalu, pola yang mulai kelihatan, dan 3 langkah buat minggu ini.",
+              href: `/ai?thread=${threadId}`,
+            });
+            weeklyReviews += 1;
+          }
+        } catch (error) {
+          // One creator's review failing shouldn't stop everyone else's reminders.
+          console.error("Gagal membuat rangkuman mingguan", user.id, error);
+        }
+      }
+    }
+
     // One digest per local day, guarded by checking for an existing one.
     const alreadySent = await prisma.notification.findFirst({
       where: { userId: user.id, kind: "DAILY_DIGEST", createdAt: { gte: start, lt: end } },
@@ -145,5 +188,5 @@ export async function GET(request: Request) {
     digests += 1;
   }
 
-  return NextResponse.json({ ok: true, reminders, digests, metricsNudges });
+  return NextResponse.json({ ok: true, reminders, digests, metricsNudges, weeklyReviews });
 }

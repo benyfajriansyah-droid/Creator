@@ -13,6 +13,7 @@ const KIND_ICON: Record<string, string> = {
   SCHEDULE_REMINDER: "⏰",
   DAILY_DIGEST: "☀️",
   METRICS_REMINDER: "📊",
+  WEEKLY_REVIEW: "🗒️",
 };
 
 export default async function NotificationsPage() {

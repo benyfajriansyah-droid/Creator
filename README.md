@@ -16,7 +16,9 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
   untuk pengingat sebelum jadwal tayang dan ringkasan harian.
 - **Worth It score** — engagement tiap konten dibandingkan dengan rata-rata kamu,
   lalu dilabeli Worth It / Rata-rata / Kurang Worth It.
-- **Insight** — perbandingan performa per akun, platform, tipe konten, dan tag.
+- **Insight** — perbandingan performa per akun, platform, tipe konten, dan tag,
+  plus **waktu posting**: blok jam dan hari mana yang paling nendang menurut data
+  kontenmu sendiri, bukan patokan umum. Menolak menyimpulkan kalau datanya belum cukup.
 - **Isi metrik massal** — satu halaman berisi semua konten tayang yang angkanya
   belum dicatat, diisi sekaligus. Kalau ada yang terlewat beberapa hari, aplikasi
   mengingatkan lewat notifikasi.
@@ -33,6 +35,9 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     langsung menulis evaluasinya sendiri: apa yang jalan, apa yang perlu diubah,
     dan satu langkah berikutnya. Tersimpan di kontennya, jadi tidak dibuat ulang
     setiap halaman dibuka.
+  - **Rangkuman mingguan** — tiap awal pekan, AI menulis apa yang terjadi minggu
+    lalu, pola yang mulai terbaca, dan 3 langkah untuk minggu ini. Masuk sebagai
+    percakapan tersimpan di tab AI, jadi bisa langsung ditanya lanjutannya.
   - **Pecah jadi konten lain (repurposing)** — tempel naskah/transkrip aslinya,
     lalu ubah satu konten jadi beberapa versi untuk platform atau format lain.
     Tiap turunan bisa langsung disimpan ke papan, dan tetap tertaut ke konten asalnya.
