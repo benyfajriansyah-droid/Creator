@@ -11,6 +11,7 @@ import {
 import { formatRupiah } from "@/lib/constants";
 import { Badge, ButtonLink, Card, buttonStyles } from "@/components/ui";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -102,14 +103,7 @@ export default async function LandingPage() {
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--bg)]/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </span>
-            <span className="text-sm font-semibold tracking-tight whitespace-nowrap sm:text-base">
-              Creator Studio
-            </span>
+            <Logo textClassName="text-sm font-semibold tracking-tight whitespace-nowrap sm:text-base" />
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />

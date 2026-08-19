@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Logo } from "@/components/Logo";
 
 export type NavUser = { name: string; email: string };
 
@@ -42,12 +43,7 @@ export function Sidebar({
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] px-3 py-4 lg:flex">
       <Link href="/dashboard" className="mb-6 flex items-center gap-2.5 px-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </span>
-        <span className="text-base font-semibold tracking-tight">Creator Studio</span>
+        <Logo />
       </Link>
 
       <nav className="flex flex-col gap-0.5">
@@ -160,12 +156,10 @@ export function MobileNav({
     <>
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)]/90 px-4 py-2.5 backdrop-blur lg:hidden">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </span>
-          <span className="text-sm font-semibold tracking-tight">Creator Studio</span>
+          <Logo
+            iconClassName="flex size-7 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--accent-text)]"
+            textClassName="text-sm font-semibold tracking-tight"
+          />
         </Link>
 
         <div className="ml-auto flex items-center gap-1.5">
