@@ -9,20 +9,21 @@ import {
   nextPaidPeriodEnd,
 } from "@/lib/billing-policy";
 
-/**
- * Payment happens entirely on lynk.id — this is a public product link, not a
- * secret, so it lives in code rather than an environment variable and works
- * the moment it's deployed. Change it here if the product is recreated.
- */
-export const LYNK_CHECKOUT_URL =
-  "https://lynk.id/projectheyben/oyqm79ozgkkd/checkout";
+/** Public checkout URL copied from the product created in OrderHero. */
+export const ORDERHERO_CHECKOUT_URL =
+  process.env.NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL?.trim() || null;
+
+// ADMIN_EMAIL remains overridable for future operators. This fallback makes
+// the owner's account usable immediately on the current production project.
+const ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL?.trim().toLowerCase() || "beny.fajriansyah@gmail.com";
 
 const SUPPORT_WHATSAPP =
   process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace(/\D/g, "") || "62895323408858";
 
 export function paymentConfirmationUrl(email?: string): string {
   const account = email ? ` Email akun saya: ${email}.` : "";
-  const message = `Halo Creator Studio, saya sudah melakukan pembayaran Pro.${account} Mohon bantu verifikasi dan aktivasi akun saya.`;
+  const message = `Halo Creator Studio, saya sudah menyelesaikan pembayaran Pro melalui OrderHero.${account} Nomor order saya: [ISI NOMOR ORDER]. Mohon bantu verifikasi dan aktivasi akun saya.`;
   return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
 }
 
@@ -55,17 +56,12 @@ export const PLAN_LABEL: Record<Plan, string> = {
 
 /** Whether this user is the app operator, allowed to activate paid plans. */
 export function isAdmin(email: string): boolean {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  return Boolean(adminEmail) && email.toLowerCase() === adminEmail!.toLowerCase();
+  return email.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
-/**
- * Quota is only enforced once there's someone who can lift it. Without
- * ADMIN_EMAIL nobody can reach /admin/plans to activate a paying customer, so
- * enforcing would lock every account out of the AI with no way back in.
- */
+/** Quota enforcement is live because the owner account is always configured. */
 export function isMonetizationLive(): boolean {
-  return Boolean(process.env.ADMIN_EMAIL);
+  return Boolean(ADMIN_EMAIL);
 }
 
 export type QuotaStatus = {
@@ -177,9 +173,9 @@ export async function expirePaidPlans(now = new Date()): Promise<number> {
 
 /**
  * Operator-only: puts an account on a paid plan after its payment has landed
- * on lynk.id. The app never sees that payment — lynk.id takes the money and
- * tells nobody — so this is the one place the two sides get joined up, and it
- * records an Order so there's a history of who was activated and when.
+ * on OrderHero. Until a signed webhook/API is available, this is the one place
+ * the payment and app account are joined by email. It records an Order so
+ * there's a history of who was activated and when.
  */
 export async function activatePlanForEmail(
   email: string,
@@ -209,7 +205,7 @@ export async function activatePlanForEmail(
         plan,
         amount: PLAN_PRICE[plan],
         status: "PAID",
-        provider: "lynk",
+        provider: "orderhero",
         paidAt: now,
       },
     }),

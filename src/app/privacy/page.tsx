@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <li>Vercel dan Neon untuk hosting aplikasi serta database.</li>
           <li>Penyedia model AI untuk memproses prompt dan konteks yang kamu kirim.</li>
           <li>Resend untuk email reset password, jika fitur email aktif.</li>
-          <li>Lynk.id untuk pembayaran; kebijakan Lynk.id berlaku di halaman mereka.</li>
+          <li>OrderHero untuk pembayaran; kebijakan OrderHero berlaku di halaman mereka.</li>
         </ul>
       </section>
       <section>

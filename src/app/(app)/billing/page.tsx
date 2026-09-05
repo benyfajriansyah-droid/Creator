@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/auth";
 import {
-  LYNK_CHECKOUT_URL,
+  ORDERHERO_CHECKOUT_URL,
   PLAN_AI_QUOTA,
   PLAN_LABEL,
   PLAN_PRICE,
@@ -94,17 +94,27 @@ export default async function BillingPage() {
               funnel, dan memecah satu konten jadi beberapa versi.
             </p>
             <div className="mt-auto pt-4">
-              <a
-                href={LYNK_CHECKOUT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${buttonStyles.primary} w-full`}
-              >
-                Langganan lewat lynk.id
-              </a>
+              {ORDERHERO_CHECKOUT_URL ? (
+                <a
+                  href={ORDERHERO_CHECKOUT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${buttonStyles.primary} w-full`}
+                >
+                  Bayar lewat OrderHero
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className={`${buttonStyles.primary} w-full cursor-not-allowed opacity-60`}
+                >
+                  Checkout sedang disiapkan
+                </button>
+              )}
               <p className="mt-2 text-xs text-[var(--text-subtle)]">
-                Pembayaran diproses lynk.id. Setelah bayar, kirim bukti dan email akun ini
-                supaya plannya kami aktifkan.
+                Pembayaran diproses OrderHero. Setelah berhasil, kirim nomor order dan email
+                akun ini supaya plannya kami aktifkan.
               </p>
               <a
                 href={paymentConfirmationUrl(user.email)}
@@ -124,14 +134,24 @@ export default async function BillingPage() {
               tautan yang sama sebelum masa aktifnya habis, lalu kabari kami.
             </p>
             <div className="mt-auto pt-4">
-              <a
-                href={LYNK_CHECKOUT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`${buttonStyles.secondary} w-full`}
-              >
-                Perpanjang lewat lynk.id
-              </a>
+              {ORDERHERO_CHECKOUT_URL ? (
+                <a
+                  href={ORDERHERO_CHECKOUT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${buttonStyles.secondary} w-full`}
+                >
+                  Perpanjang lewat OrderHero
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className={`${buttonStyles.secondary} w-full cursor-not-allowed opacity-60`}
+                >
+                  Checkout sedang disiapkan
+                </button>
+              )}
               <a
                 href={paymentConfirmationUrl(user.email)}
                 target="_blank"

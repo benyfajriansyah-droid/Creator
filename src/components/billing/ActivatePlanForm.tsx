@@ -36,7 +36,7 @@ export default function ActivatePlanForm() {
     <form action={formAction} className="space-y-4">
       <Field
         label="Email akun"
-        hint="Email yang dipakai klien mendaftar di aplikasi ini — belum tentu sama dengan email yang dia pakai membayar di lynk.id."
+        hint="Email yang dipakai klien mendaftar di aplikasi ini — cocokkan dengan detail order di OrderHero."
       >
         <input
           type="email"

@@ -342,7 +342,7 @@ export default async function LandingPage() {
           <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-[var(--text-subtle)]">
             Satu &ldquo;aksi AI&rdquo; = sekali generate — misalnya satu set ide konten, satu
             draft script, atau satu jawaban di Tanya AI. Pembayaran Pro diproses lewat
-            lynk.id, dan akunmu diaktifkan setelah pembayarannya masuk.
+            OrderHero, dan akunmu diaktifkan setelah pembayarannya terverifikasi.
           </p>
         </section>
 
@@ -502,7 +502,7 @@ function PlanCard({
   features: string[];
   excluded?: string[];
   cta: string;
-  /** Either an in-app route or, for the paid plan, the lynk.id checkout. */
+  /** Either an in-app route or an external checkout. */
   href: string;
   external?: boolean;
   variant?: "primary" | "secondary";

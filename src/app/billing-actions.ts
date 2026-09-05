@@ -9,8 +9,8 @@ import { activatePlanForEmail, isAdmin } from "@/lib/billing";
 export type ActivateState = { error?: string; success?: string };
 
 /**
- * Operator-only. Payment is collected on lynk.id, which tells the app nothing,
- * so a paid customer is joined to their account here by email.
+ * Operator-only. Until OrderHero provides a signed integration, a paid
+ * customer is joined to their account here by email after the order is checked.
  */
 export async function activatePlan(
   _prev: ActivateState,

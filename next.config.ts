@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
           "default-src 'self'",
           "base-uri 'self'",
           "frame-ancestors 'none'",
-          "form-action 'self' https://lynk.id",
+          "form-action 'self' https://orderhero.id https://*.orderhero.id",
           "img-src 'self' data: blob:",
           "font-src 'self' data:",
           "style-src 'self' 'unsafe-inline'",

@@ -32,4 +32,15 @@ describe("paid-product security invariants", () => {
     expect(source.match(/userId: user\.id/g)?.length ?? 0).toBeGreaterThanOrEqual(10);
     expect(source).toContain("deleteMany({\n    where: { id, userId: user.id }");
   });
+
+  it("uses OrderHero and never falls back to the retired checkout", () => {
+    const billing = read("lib/billing.ts");
+    const billingPage = read("app/(app)/billing/page.tsx");
+    const legal = `${read("app/privacy/page.tsx")}\n${read("app/terms/page.tsx")}`;
+
+    expect(billing).toContain("NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL");
+    expect(billing).toContain('provider: "orderhero"');
+    expect(billingPage).toContain("ORDERHERO_CHECKOUT_URL");
+    expect(`${billing}\n${billingPage}\n${legal}`.toLowerCase()).not.toContain("lynk.id");
+  });
 });

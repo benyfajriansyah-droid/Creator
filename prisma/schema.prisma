@@ -93,7 +93,7 @@ model Order {
   plan     Plan
   amount   Int
   status   OrderStatus @default(PENDING)
-  provider String      @default("lynk")
+  provider String      @default("orderhero")
   /// Invoice/transaction id from the payment gateway, set once the checkout is created.
   externalId   String? @unique
   paymentLink  String?

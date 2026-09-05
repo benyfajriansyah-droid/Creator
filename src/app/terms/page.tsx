@@ -25,8 +25,8 @@ export default function TermsPage() {
         <h2>Plan Pro dan pembayaran</h2>
         <p>
           Plan Pro berlaku 30 hari per aktivasi dan tidak diperpanjang otomatis. Pembayaran
-          dilakukan di Lynk.id, lalu pelanggan mengonfirmasi bukti dan email akun melalui
-          WhatsApp. Aktivasi dilakukan setelah pembayaran berhasil diverifikasi. Setelah
+          dilakukan di OrderHero, lalu pelanggan mengonfirmasi nomor order dan email akun
+          melalui WhatsApp. Aktivasi dilakukan setelah pembayaran berhasil diverifikasi. Setelah
           masa aktif berakhir, akun kembali ke Gratis dan data konten tetap tersimpan.
         </p>
       </section>

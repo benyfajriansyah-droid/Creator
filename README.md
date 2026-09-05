@@ -43,7 +43,7 @@ performa konten dari beberapa akun sosmed dalam satu tempat.
     Tiap turunan bisa langsung disimpan ke papan, dan tetap tertaut ke konten asalnya.
 - **Tema terang & gelap.**
 - **Landing page & billing** — halaman publik `/` buat promosi, plan Gratis dan Pro,
-  dengan pembayaran lewat [lynk.id](https://lynk.id).
+  dengan pembayaran lewat [OrderHero](https://orderhero.id).
 
 ## Yang belum ada
 
@@ -79,9 +79,8 @@ langsung. Tanpa salah satu kunci itu aplikasi tetap berjalan normal — tab AI
 hanya menampilkan petunjuk cara mengaktifkannya.
 
 Pemakaian AI ditagih per penggunaan ke akun pemilik kunci, jadi perhitungkan
-biayanya kalau aplikasi ini dipakai banyak orang — isi `ADMIN_EMAIL` (lihat tabel
-di bawah) supaya pemakaian AI dibatasi kuota per plan dan biayanya tertutup dari
-langganan.
+biayanya kalau aplikasi ini dipakai banyak orang. Kuota per plan otomatis aktif
+dan akun operator ditentukan lewat `ADMIN_EMAIL`.
 
 ### Catatan performa
 
@@ -98,18 +97,19 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `CRON_SECRET` | **Wajib di production.** Melindungi endpoint `/api/cron/reminders`; tanpa nilai ini cron menolak berjalan. |
 | `RESEND_API_KEY` | Mengaktifkan pengiriman email untuk reset password lewat [Resend](https://resend.com). Tanpa ini alur resetnya tetap ada, tapi tautannya dibuat manual oleh admin di `/admin/plans`. |
 | `EMAIL_FROM` | Alamat pengirim email. Default memakai alamat bersama milik Resend yang cukup untuk uji coba. |
-| `ADMIN_EMAIL` | Email akun yang boleh buka `/admin/plans` untuk mengaktifkan plan pelanggan. Selama kosong, kuota AI tidak dibatasi sama sekali — karena tanpa admin tidak ada yang bisa mengaktifkan siapa pun, jadi membatasi malah mengunci semua akun tanpa jalan keluar. |
+| `ADMIN_EMAIL` | Email akun yang boleh membuka `/admin/plans`. Default production saat ini `beny.fajriansyah@gmail.com`; isi variabel ini untuk mengganti operator. |
+| `NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL` | **Wajib sebelum menerima pembayaran.** URL checkout publik produk Pro yang dibuat di OrderHero. |
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Nomor WhatsApp bantuan dan konfirmasi pembayaran, format kode negara tanpa `+`. Default mengarah ke kontak Creator Studio. |
 
 ### Cara kerja pembayaran
 
-Pembayaran ditangani sepenuhnya oleh [lynk.id](https://lynk.id) — aplikasi ini
-tidak pernah memproses uang dan tidak diberi tahu saat ada yang membayar. Karena
-itu alurnya:
+Pembayaran ditangani oleh [OrderHero](https://orderhero.id). Sampai webhook/API
+bertanda tangan tersedia untuk aplikasi ini, aktivasi akun tetap diverifikasi
+oleh operator dengan alur berikut:
 
 1. Calon pelanggan klik **Langganan Pro** di landing page atau halaman Billing,
-   lalu membayar di halaman checkout lynk.id.
-2. Dia mengabari kamu, menyertakan email yang dipakai mendaftar di aplikasi ini.
+   lalu membayar di halaman checkout OrderHero.
+2. Dia mengabari kamu, menyertakan nomor order dan email yang dipakai mendaftar.
 3. Kamu buka `/admin/plans`, masukkan email itu, klik **Aktifkan Pro**. Plannya
    langsung aktif 30 hari dan kuota AI-nya di-reset.
 
@@ -118,9 +118,9 @@ ke Gratis dan pelanggan perlu membayar lagi, lalu diaktifkan ulang dengan cara y
 Halaman `/admin/plans` menampilkan siapa saja yang aktif beserta tanggal
 habisnya, jadi perpanjangan bisa dipantau dari situ.
 
-Link checkoutnya ada di `LYNK_CHECKOUT_URL` (`src/lib/billing.ts`) — bukan
-environment variable, karena itu tautan publik biasa. Ganti di situ kalau
-produknya dibuat ulang di lynk.id.
+Link checkout disimpan di `NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL`. Kalau variabel
+ini belum diisi, tombol pembayaran sengaja dinonaktifkan supaya pelanggan tidak
+diarahkan ke halaman yang salah.
 
 Pelanggan dapat mengunduh seluruh datanya atau menghapus akun secara permanen
 dari halaman **Pengaturan**. Halaman `/privacy` dan `/terms` menjelaskan aturan

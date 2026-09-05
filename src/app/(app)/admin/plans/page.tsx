@@ -39,7 +39,7 @@ export default async function AdminPlansPage() {
     <div>
       <PageHeader
         title="Aktifkan Plan"
-        description="Pembayaran ditangani lynk.id, jadi akun klien diaktifkan di sini setelah pembayarannya masuk."
+        description="Cocokkan nomor order di OrderHero dengan email pelanggan, lalu aktifkan akun klien di sini."
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
