@@ -98,7 +98,7 @@ buat database Neon di region yang sama supaya query tidak menyeberang benua.
 | `RESEND_API_KEY` | Mengaktifkan pengiriman email untuk reset password lewat [Resend](https://resend.com). Tanpa ini alur resetnya tetap ada, tapi tautannya dibuat manual oleh admin di `/admin/plans`. |
 | `EMAIL_FROM` | Alamat pengirim email. Default memakai alamat bersama milik Resend yang cukup untuk uji coba. |
 | `ADMIN_EMAIL` | Email akun yang boleh membuka `/admin/plans`. Default production saat ini `beny.fajriansyah@gmail.com`; isi variabel ini untuk mengganti operator. |
-| `NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL` | **Wajib sebelum menerima pembayaran.** URL checkout publik produk Pro yang dibuat di OrderHero. |
+| `NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL` | Override opsional untuk URL checkout publik produk Pro. Default production mengarah ke `https://famzcoffee.orderhero.id/form/creator-pro`. |
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Nomor WhatsApp bantuan dan konfirmasi pembayaran, format kode negara tanpa `+`. Default mengarah ke kontak Creator Studio. |
 
 ### Cara kerja pembayaran
@@ -118,9 +118,8 @@ ke Gratis dan pelanggan perlu membayar lagi, lalu diaktifkan ulang dengan cara y
 Halaman `/admin/plans` menampilkan siapa saja yang aktif beserta tanggal
 habisnya, jadi perpanjangan bisa dipantau dari situ.
 
-Link checkout disimpan di `NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL`. Kalau variabel
-ini belum diisi, tombol pembayaran sengaja dinonaktifkan supaya pelanggan tidak
-diarahkan ke halaman yang salah.
+Link checkout default ada di `src/lib/billing.ts` dan dapat diganti lewat
+`NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL` kalau form OrderHero dipindah atau dibuat ulang.
 
 Pelanggan dapat mengunduh seluruh datanya atau menghapus akun secara permanen
 dari halaman **Pengaturan**. Halaman `/privacy` dan `/terms` menjelaskan aturan

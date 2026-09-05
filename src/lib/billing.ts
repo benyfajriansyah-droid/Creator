@@ -11,7 +11,8 @@ import {
 
 /** Public checkout URL copied from the product created in OrderHero. */
 export const ORDERHERO_CHECKOUT_URL =
-  process.env.NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL?.trim() || null;
+  process.env.NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL?.trim() ||
+  "https://famzcoffee.orderhero.id/form/creator-pro";
 
 // ADMIN_EMAIL remains overridable for future operators. This fallback makes
 // the owner's account usable immediately on the current production project.

@@ -39,6 +39,7 @@ describe("paid-product security invariants", () => {
     const legal = `${read("app/privacy/page.tsx")}\n${read("app/terms/page.tsx")}`;
 
     expect(billing).toContain("NEXT_PUBLIC_ORDERHERO_CHECKOUT_URL");
+    expect(billing).toContain("https://famzcoffee.orderhero.id/form/creator-pro");
     expect(billing).toContain('provider: "orderhero"');
     expect(billingPage).toContain("ORDERHERO_CHECKOUT_URL");
     expect(`${billing}\n${billingPage}\n${legal}`.toLowerCase()).not.toContain("lynk.id");
