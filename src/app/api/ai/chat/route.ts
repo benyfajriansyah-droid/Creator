@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { buildCreatorContext, isAiConfigured, streamAiMessage } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -27,6 +28,26 @@ export async function POST(request: Request) {
   if (!message) {
     return NextResponse.json({ error: "Pesan kosong" }, { status: 400 });
   }
+  if (message.length > 12_000) {
+    return NextResponse.json(
+      { error: "Pesan terlalu panjang (maksimal 12.000 karakter)." },
+      { status: 400 }
+    );
+  }
+
+  const throttle = await rateLimit("ai-chat", `${user.id}:${clientIdentifier(request.headers)}`, {
+    limit: 20,
+    windowMs: 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak permintaan AI. Coba lagi sebentar." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+      }
+    );
+  }
 
   const quota = await getQuotaStatus(user.id);
   if (quota.remaining <= 0) {
@@ -34,6 +55,14 @@ export async function POST(request: Request) {
       {
         error: `Kuota AI bulan ini habis (${quota.used}/${quota.limit}). Upgrade plan di halaman Billing buat lanjut.`,
       },
+      { status: 402 }
+    );
+  }
+
+  const reservation = await reserveAiQuota(user.id);
+  if (!reservation.allowed) {
+    return NextResponse.json(
+      { error: "Kuota AI bulan ini habis. Buka Billing buat lanjut." },
       { status: 402 }
     );
   }
@@ -103,6 +132,7 @@ export async function POST(request: Request) {
 
         const final = await stream.finalMessage();
         if (final.stop_reason === "refusal") {
+          await releaseAiQuota(user.id, reservation.charged);
           send({
             type: "error",
             error: "Permintaan ini ditolak oleh filter keamanan. Coba ubah kalimatnya.",
@@ -115,10 +145,10 @@ export async function POST(request: Request) {
             where: { id: thread.id },
             data: { updatedAt: new Date() },
           });
-          await consumeAiQuota(user.id);
           send({ type: "done" });
         }
       } catch (error) {
+        await releaseAiQuota(user.id, reservation.charged);
         console.error("AI chat failed", error);
         send({
           type: "error",

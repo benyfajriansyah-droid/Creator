@@ -8,7 +8,8 @@ import {
   streamAiMessage,
   textOf,
 } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 import { REPURPOSE_SCHEMA } from "@/lib/ai-schemas";
 import { PLATFORM_LABEL } from "@/lib/constants";
 
@@ -32,6 +33,17 @@ export async function POST(request: Request) {
   const count = Number.isFinite(requested)
     ? Math.min(Math.max(Math.round(requested), 1), 6)
     : 3;
+
+  const throttle = await rateLimit("ai-repurpose", `${user.id}:${clientIdentifier(request.headers)}`, {
+    limit: 10,
+    windowMs: 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return NextResponse.json({ error: "Terlalu banyak permintaan AI. Coba lagi sebentar." }, {
+      status: 429,
+      headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+    });
+  }
 
   const item = await prisma.contentItem.findFirst({
     where: { id: contentId, userId: user.id },
@@ -57,6 +69,11 @@ export async function POST(request: Request) {
       },
       { status: 402 }
     );
+  }
+
+  const reservation = await reserveAiQuota(user.id);
+  if (!reservation.allowed) {
+    return NextResponse.json({ error: "Kuota AI bulan ini habis. Buka Billing buat lanjut." }, { status: 402 });
   }
 
   const detail = [
@@ -101,6 +118,7 @@ Syarat:
     const message = await stream.finalMessage();
 
     if (message.stop_reason === "refusal") {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Permintaan ini ditolak oleh filter keamanan." },
         { status: 422 }
@@ -111,15 +129,16 @@ Syarat:
     try {
       parsed = parseJsonLoose(textOf(message));
     } catch {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Jawaban AI tidak bisa dibaca. Coba lagi." },
         { status: 502 }
       );
     }
 
-    await consumeAiQuota(user.id);
     return NextResponse.json({ result: parsed });
   } catch (error) {
+    await releaseAiQuota(user.id, reservation.charged);
     console.error("AI repurpose failed", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Gagal menghubungi layanan AI" },

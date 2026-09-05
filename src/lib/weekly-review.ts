@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { buildCreatorContext, isAiConfigured, streamAiMessage, textOf } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
 import { engagementRateOf, formatEngagement } from "@/lib/scoring";
 import { PLATFORM_LABEL, formatNumber } from "@/lib/constants";
 import { analysePostingTimes } from "@/lib/timing";
@@ -46,6 +46,9 @@ export async function generateWeeklyReview(userId: string): Promise<string | nul
 
   // Nothing published and nothing lined up means there's no week to review.
   if (publishedThisWeek.length === 0 && scheduledNext.length === 0) return null;
+
+  const reservation = await reserveAiQuota(userId);
+  if (!reservation.allowed) return null;
 
   const lines: string[] = [];
 
@@ -97,29 +100,39 @@ Susun jadi tiga bagian pendek, pakai heading markdown:
 
 Maksimal 250 kata. Bahasa santai dan langsung, tanpa basa-basi pembuka.`;
 
-  const context = await buildCreatorContext(userId);
-  const stream = streamAiMessage({ context, messages: [{ role: "user", content: prompt }] });
-  const message = await stream.finalMessage();
-  if (message.stop_reason === "refusal") return null;
+  try {
+    const context = await buildCreatorContext(userId);
+    const stream = streamAiMessage({ context, messages: [{ role: "user", content: prompt }] });
+    const message = await stream.finalMessage();
+    if (message.stop_reason === "refusal") {
+      await releaseAiQuota(userId, reservation.charged);
+      return null;
+    }
 
-  const text = textOf(message).trim();
-  if (!text) return null;
+    const text = textOf(message).trim();
+    if (!text) {
+      await releaseAiQuota(userId, reservation.charged);
+      return null;
+    }
 
-  const label = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "short",
-    timeZone: user.timeZone,
-  });
+    const label = new Date().toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      timeZone: user.timeZone,
+    });
 
-  const thread = await prisma.aiThread.create({
-    data: {
-      userId,
-      title: `Rangkuman minggu ini · ${label}`,
-      messages: { create: { role: "ASSISTANT", content: text } },
-    },
-    select: { id: true },
-  });
+    const thread = await prisma.aiThread.create({
+      data: {
+        userId,
+        title: `Rangkuman minggu ini · ${label}`,
+        messages: { create: { role: "ASSISTANT", content: text } },
+      },
+      select: { id: true },
+    });
 
-  await consumeAiQuota(userId);
-  return thread.id;
+    return thread.id;
+  } catch (error) {
+    await releaseAiQuota(userId, reservation.charged);
+    throw error;
+  }
 }

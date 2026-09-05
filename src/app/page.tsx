@@ -2,12 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import {
-  LYNK_CHECKOUT_URL,
-  PLAN_AI_QUOTA,
-  PLAN_LABEL,
-  PLAN_PRICE,
-} from "@/lib/billing";
+import { PLAN_AI_QUOTA, PLAN_LABEL, PLAN_PRICE } from "@/lib/billing";
 import { formatRupiah } from "@/lib/constants";
 import { Badge, ButtonLink, Card, buttonStyles } from "@/components/ui";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -340,9 +335,8 @@ export default async function LandingPage() {
                 "Pecah satu konten jadi beberapa versi",
                 "Funnel TOFU/MOFU/BOFU",
               ]}
-              cta="Langganan Pro"
-              href={LYNK_CHECKOUT_URL}
-              external
+              cta="Daftar & Langganan Pro"
+              href="/register?next=/billing"
             />
           </div>
           <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-[var(--text-subtle)]">
@@ -401,6 +395,12 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 text-xs text-[var(--text-subtle)]">
           <span>© {new Date().getFullYear()} Creator Studio</span>
           <span className="flex gap-4">
+            <Link href="/privacy" className="hover:text-[var(--text)]">
+              Privasi
+            </Link>
+            <Link href="/terms" className="hover:text-[var(--text)]">
+              Syarat
+            </Link>
             <Link href="/login" className="hover:text-[var(--text)]">
               Masuk
             </Link>

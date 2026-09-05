@@ -6,8 +6,15 @@ export const metadata = { title: "Masuk · Creator Studio" };
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reset?: string }>;
+  searchParams: Promise<{ reset?: string; next?: string }>;
 }) {
-  const { reset } = await searchParams;
-  return <AuthForm mode="login" action={login} justReset={reset === "1"} />;
+  const { reset, next } = await searchParams;
+  return (
+    <AuthForm
+      mode="login"
+      action={login}
+      justReset={reset === "1"}
+      redirectTo={next === "/billing" ? "/billing" : undefined}
+    />
+  );
 }

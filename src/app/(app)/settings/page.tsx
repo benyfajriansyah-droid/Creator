@@ -3,6 +3,8 @@ import { getVapidKeys } from "@/lib/secrets";
 import { updateNotificationSettings } from "@/app/actions";
 import { PageHeader, Card, SectionHeading, Field, buttonStyles, inputStyles } from "@/components/ui";
 import PushSetup from "@/components/PushSetup";
+import DeleteAccountForm from "@/components/DeleteAccountForm";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -109,7 +111,7 @@ export default async function SettingsPage() {
         </Card>
       </section>
 
-      <section>
+      <section className="mb-8">
         <SectionHeading title="Akun" />
         <Card className="p-5">
           <dl className="space-y-2 text-sm">
@@ -124,6 +126,33 @@ export default async function SettingsPage() {
           </dl>
         </Card>
       </section>
+
+      <section className="mb-8">
+        <SectionHeading title="Data akun" />
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <p className="text-sm font-medium">Unduh salinan data</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Berisi konten, metrik, percakapan AI, dan riwayat aktivasi dalam format JSON.
+            </p>
+          </div>
+          <a href="/api/account/export" download className={buttonStyles.secondary}>
+            Ekspor data
+          </a>
+        </Card>
+      </section>
+
+      <section className="mb-8">
+        <SectionHeading title="Hapus akun" />
+        <Card className="border-[var(--danger-border)] p-5">
+          <DeleteAccountForm />
+        </Card>
+      </section>
+
+      <p className="text-xs text-[var(--text-subtle)]">
+        Baca <Link href="/privacy" className="underline">Kebijakan Privasi</Link> dan{" "}
+        <Link href="/terms" className="underline">Syarat Penggunaan</Link>.
+      </p>
     </div>
   );
 }

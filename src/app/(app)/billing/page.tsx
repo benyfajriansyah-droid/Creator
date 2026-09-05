@@ -7,6 +7,7 @@ import {
   PLAN_PRICE,
   getQuotaStatus,
   isMonetizationLive,
+  paymentConfirmationUrl,
 } from "@/lib/billing";
 import { Badge, Card, PageHeader, buttonStyles } from "@/components/ui";
 import { formatDateTime, formatNumber, formatRupiah } from "@/lib/constants";
@@ -105,6 +106,14 @@ export default async function BillingPage() {
                 Pembayaran diproses lynk.id. Setelah bayar, kirim bukti dan email akun ini
                 supaya plannya kami aktifkan.
               </p>
+              <a
+                href={paymentConfirmationUrl(user.email)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${buttonStyles.secondary} mt-3 w-full`}
+              >
+                Saya sudah bayar · Konfirmasi WhatsApp
+              </a>
             </div>
           </Card>
         ) : (
@@ -122,6 +131,14 @@ export default async function BillingPage() {
                 className={`${buttonStyles.secondary} w-full`}
               >
                 Perpanjang lewat lynk.id
+              </a>
+              <a
+                href={paymentConfirmationUrl(user.email)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${buttonStyles.ghost} mt-2 w-full`}
+              >
+                Konfirmasi pembayaran
               </a>
             </div>
           </Card>

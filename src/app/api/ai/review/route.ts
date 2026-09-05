@@ -8,7 +8,8 @@ import {
   streamAiMessage,
   textOf,
 } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 import { REVIEW_SCHEMA } from "@/lib/ai-schemas";
 import { PLATFORM_LABEL, formatNumber } from "@/lib/constants";
 import { formatEngagement, scoreContent, VERDICT_LABEL } from "@/lib/scoring";
@@ -37,6 +38,20 @@ export async function POST(request: Request) {
   const contentId = typeof body?.contentId === "string" ? body.contentId : "";
   const force = body?.force === true;
 
+  const throttle = await rateLimit("ai-review", `${user.id}:${clientIdentifier(request.headers)}`, {
+    limit: 10,
+    windowMs: 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak permintaan AI. Coba lagi sebentar." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+      }
+    );
+  }
+
   const item = await prisma.contentItem.findFirst({
     where: { id: contentId, userId: user.id },
     include: { account: true },
@@ -62,6 +77,14 @@ export async function POST(request: Request) {
       {
         error: `Kuota AI bulan ini habis (${quota.used}/${quota.limit}). Upgrade plan di halaman Billing buat lanjut.`,
       },
+      { status: 402 }
+    );
+  }
+
+  const reservation = await reserveAiQuota(user.id);
+  if (!reservation.allowed) {
+    return NextResponse.json(
+      { error: "Kuota AI bulan ini habis. Buka Billing buat lanjut." },
       { status: 402 }
     );
   }
@@ -119,6 +142,7 @@ Syarat:
     const message = await stream.finalMessage();
 
     if (message.stop_reason === "refusal") {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Permintaan ini ditolak oleh filter keamanan." },
         { status: 422 }
@@ -129,6 +153,7 @@ Syarat:
     try {
       parseJsonLoose(text);
     } catch {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Jawaban AI tidak bisa dibaca. Coba lagi." },
         { status: 502 }
@@ -140,10 +165,9 @@ Syarat:
       where: { id: item.id },
       data: { aiReview: text, aiReviewedAt: reviewedAt },
     });
-    await consumeAiQuota(user.id);
-
     return NextResponse.json({ review: text, reviewedAt });
   } catch (error) {
+    await releaseAiQuota(user.id, reservation.charged);
     console.error("AI review failed", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Gagal menghubungi layanan AI" },

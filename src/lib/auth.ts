@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
 import { getSessionKey } from "@/lib/secrets";
+import { normalizeExpiredPlan } from "@/lib/billing";
 
 const COOKIE_NAME = "creator_session";
 const SESSION_DAYS = 30;
@@ -52,7 +53,8 @@ export const getCurrentUser = cache(async () => {
   try {
     const { payload } = await jwtVerify(token, await getSessionKey());
     if (!payload.sub) return null;
-    return await prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    return user ? await normalizeExpiredPlan(user) : null;
   } catch {
     return null;
   }

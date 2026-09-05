@@ -1,8 +1,13 @@
 import "server-only";
 import type { Plan, User } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-
-const QUOTA_PERIOD_DAYS = 30;
+import {
+  PAID_PERIOD_DAYS,
+  addDays,
+  isPaidPlanExpired,
+  nextPaidPeriodEnd,
+} from "@/lib/billing-policy";
 
 /**
  * Payment happens entirely on lynk.id — this is a public product link, not a
@@ -11,6 +16,15 @@ const QUOTA_PERIOD_DAYS = 30;
  */
 export const LYNK_CHECKOUT_URL =
   "https://lynk.id/projectheyben/oyqm79ozgkkd/checkout";
+
+const SUPPORT_WHATSAPP =
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace(/\D/g, "") || "62895323408858";
+
+export function paymentConfirmationUrl(email?: string): string {
+  const account = email ? ` Email akun saya: ${email}.` : "";
+  const message = `Halo Creator Studio, saya sudah melakukan pembayaran Pro.${account} Mohon bantu verifikasi dan aktivasi akun saya.`;
+  return `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
+}
 
 /**
  * Only FREE and PRO are sold. STUDIO stays in the Prisma enum because
@@ -65,11 +79,10 @@ export type QuotaStatus = {
 
 /**
  * Reads the user's quota, lazily rolling it over if the reset window has
- * passed. Call this before an AI call to check `remaining`, then
- * `consumeAiQuota` after a successful generation.
+ * passed. AI routes reserve usage atomically before calling the model.
  */
 export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
-  const user = await rolloverQuotaIfNeeded(userId);
+  const user = await refreshBillingState(userId);
   const limit = PLAN_AI_QUOTA[user.plan];
   const enforced = isMonetizationLive();
   return {
@@ -81,30 +94,85 @@ export async function getQuotaStatus(userId: string): Promise<QuotaStatus> {
   };
 }
 
-async function rolloverQuotaIfNeeded(userId: string): Promise<User> {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (user.aiQuotaResetAt && user.aiQuotaResetAt > new Date()) return user;
+export async function normalizeExpiredPlan(user: User, now = new Date()): Promise<User> {
+  if (!isPaidPlanExpired(user.plan, user.planRenewsAt, now)) return user;
 
   return prisma.user.update({
-    where: { id: userId },
+    where: { id: user.id },
     data: {
+      plan: "FREE",
+      planRenewsAt: null,
       aiQuotaUsed: 0,
-      aiQuotaResetAt: addDays(new Date(), QUOTA_PERIOD_DAYS),
+      aiQuotaResetAt: null,
     },
   });
 }
 
-/** Increments quota usage by one AI action. Call only after a successful generation. */
-export async function consumeAiQuota(userId: string): Promise<void> {
-  if (!isMonetizationLive()) return;
-  await prisma.user.update({
-    where: { id: userId },
-    data: { aiQuotaUsed: { increment: 1 } },
+async function refreshBillingState(userId: string, now = new Date()): Promise<User> {
+  let user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  user = await normalizeExpiredPlan(user, now);
+
+  if (user.plan === "FREE" || (user.aiQuotaResetAt && user.aiQuotaResetAt > now)) {
+    return user;
+  }
+
+  return prisma.user.update({
+    where: { id: user.id },
+    data: {
+      aiQuotaUsed: 0,
+      aiQuotaResetAt: user.planRenewsAt ?? addDays(now, PAID_PERIOD_DAYS),
+    },
   });
 }
 
-function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+export type AiQuotaReservation = { allowed: boolean; charged: boolean };
+
+/** Reserves one AI action atomically before calling the paid model. */
+export async function reserveAiQuota(userId: string): Promise<AiQuotaReservation> {
+  if (!isMonetizationLive()) return { allowed: true, charged: false };
+
+  const user = await refreshBillingState(userId);
+  const limit = PLAN_AI_QUOTA[user.plan];
+  if (limit <= 0) return { allowed: false, charged: false };
+
+  const updated = await prisma.user.updateMany({
+    where: {
+      id: user.id,
+      plan: user.plan,
+      planRenewsAt: { gt: new Date() },
+      aiQuotaUsed: { lt: limit },
+    },
+    data: { aiQuotaUsed: { increment: 1 } },
+  });
+
+  return { allowed: updated.count === 1, charged: updated.count === 1 };
+}
+
+/** Refunds a reservation when the model fails or refuses before producing an answer. */
+export async function releaseAiQuota(userId: string, charged: boolean): Promise<void> {
+  if (!charged) return;
+  await prisma.$executeRaw(Prisma.sql`
+    UPDATE "User"
+    SET "aiQuotaUsed" = GREATEST("aiQuotaUsed" - 1, 0), "updatedAt" = NOW()
+    WHERE "id" = ${userId}
+  `);
+}
+
+/** Proactively expires inactive paid plans during the daily maintenance run. */
+export async function expirePaidPlans(now = new Date()): Promise<number> {
+  const result = await prisma.user.updateMany({
+    where: {
+      plan: { not: "FREE" },
+      OR: [{ planRenewsAt: null }, { planRenewsAt: { lte: now } }],
+    },
+    data: {
+      plan: "FREE",
+      planRenewsAt: null,
+      aiQuotaUsed: 0,
+      aiQuotaResetAt: null,
+    },
+  });
+  return result.count;
 }
 
 /**
@@ -117,19 +185,20 @@ export async function activatePlanForEmail(
   email: string,
   plan: Plan
 ): Promise<{ name: string; email: string }> {
+  if (plan !== "FREE" && plan !== "PRO") throw new Error("Plan tidak dijual.");
   const normalised = email.trim().toLowerCase();
   const user = await prisma.user.findUnique({ where: { email: normalised } });
   if (!user) throw new Error(`Belum ada akun dengan email ${normalised}`);
 
   const now = new Date();
-  const until = addDays(now, QUOTA_PERIOD_DAYS);
+  const until = plan === "FREE" ? null : nextPaidPeriodEnd(user.planRenewsAt, now);
 
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
       data: {
         plan,
-        planRenewsAt: plan === "FREE" ? null : until,
+        planRenewsAt: until,
         aiQuotaUsed: 0,
         aiQuotaResetAt: until,
       },

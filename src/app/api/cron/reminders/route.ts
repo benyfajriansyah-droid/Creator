@@ -4,6 +4,8 @@ import { notify } from "@/lib/notify";
 import { formatTime } from "@/lib/constants";
 import { dayBounds, hourIn, weekdayIn } from "@/lib/time";
 import { generateWeeklyReview } from "@/lib/weekly-review";
+import { expirePaidPlans } from "@/lib/billing";
+import { pruneExpiredRateLimits } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 // Weekly reviews call a model, so this run can take a while.
@@ -36,13 +38,18 @@ const METRICS_REMIND_EVERY_DAYS = 3;
  * All are idempotent, so running this more often than needed is harmless.
  */
 export async function GET(request: Request) {
-  // Works with no configuration; set CRON_SECRET to lock the endpoint down.
   const secret = process.env.CRON_SECRET;
-  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret && process.env.NODE_ENV === "production") {
+    console.error("CRON_SECRET is required in production.");
+    return NextResponse.json({ error: "Cron is not configured" }, { status: 503 });
+  }
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const now = new Date();
+  const expiredPlans = await expirePaidPlans(now);
+  await pruneExpiredRateLimits();
 
   const users = await prisma.user.findMany({
     select: {
@@ -188,5 +195,8 @@ export async function GET(request: Request) {
     digests += 1;
   }
 
-  return NextResponse.json({ ok: true, reminders, digests, metricsNudges, weeklyReviews });
+  return NextResponse.json(
+    { ok: true, reminders, digests, metricsNudges, weeklyReviews, expiredPlans },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }

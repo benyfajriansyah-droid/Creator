@@ -7,7 +7,8 @@ import {
   streamAiMessage,
   textOf,
 } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 import { FUNNEL_SCHEMA, IDEAS_SCHEMA } from "@/lib/ai-schemas";
 
 export const dynamic = "force-dynamic";
@@ -61,6 +62,17 @@ export async function POST(request: Request) {
       ? 2
       : 5;
 
+  const throttle = await rateLimit("ai-generate", `${user.id}:${clientIdentifier(request.headers)}`, {
+    limit: 10,
+    windowMs: 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return NextResponse.json({ error: "Terlalu banyak permintaan AI. Coba lagi sebentar." }, {
+      status: 429,
+      headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+    });
+  }
+
   const quota = await getQuotaStatus(user.id);
   if (quota.remaining <= 0) {
     return NextResponse.json(
@@ -69,6 +81,11 @@ export async function POST(request: Request) {
       },
       { status: 402 }
     );
+  }
+
+  const reservation = await reserveAiQuota(user.id);
+  if (!reservation.allowed) {
+    return NextResponse.json({ error: "Kuota AI bulan ini habis. Buka Billing buat lanjut." }, { status: 402 });
   }
 
   try {
@@ -84,6 +101,7 @@ export async function POST(request: Request) {
     const message = await stream.finalMessage();
 
     if (message.stop_reason === "refusal") {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Permintaan ini ditolak oleh filter keamanan. Coba ubah briefnya." },
         { status: 422 }
@@ -94,15 +112,16 @@ export async function POST(request: Request) {
     try {
       parsed = parseJsonLoose(textOf(message));
     } catch {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Jawaban AI tidak bisa dibaca. Coba lagi." },
         { status: 502 }
       );
     }
 
-    await consumeAiQuota(user.id);
     return NextResponse.json({ mode, result: parsed });
   } catch (error) {
+    await releaseAiQuota(user.id, reservation.charged);
     console.error("AI generate failed", error);
     return NextResponse.json(
       {

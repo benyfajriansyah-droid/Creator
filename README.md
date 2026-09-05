@@ -88,17 +88,18 @@ langganan.
 `vercel.json` menyetel region function ke `sin1` (Singapura). Untuk hasil terbaik,
 buat database Neon di region yang sama supaya query tidak menyeberang benua.
 
-### Environment variable opsional
+### Environment variable
 
 | Variabel | Fungsi |
 | --- | --- |
 | `AI_GATEWAY_API_KEY` | Mengaktifkan seluruh fitur AI lewat [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) — satu kunci untuk Gemini, Claude, dsb. Tanpa ini (dan tanpa `ANTHROPIC_API_KEY`), tab AI menampilkan petunjuk setup dan fitur lain tetap jalan. |
 | `ANTHROPIC_API_KEY` | Alternatif: memanggil Anthropic langsung tanpa gateway. Dipakai kalau `AI_GATEWAY_API_KEY` kosong. |
 | `AI_MODEL` | Ganti model tanpa ubah kode. Default `google/gemini-2.5-flash` (lewat gateway) atau `claude-sonnet-5` (langsung ke Anthropic). |
-| `CRON_SECRET` | Kalau diisi, endpoint `/api/cron/reminders` hanya menerima request dengan header `Authorization: Bearer <nilai>`. |
+| `CRON_SECRET` | **Wajib di production.** Melindungi endpoint `/api/cron/reminders`; tanpa nilai ini cron menolak berjalan. |
 | `RESEND_API_KEY` | Mengaktifkan pengiriman email untuk reset password lewat [Resend](https://resend.com). Tanpa ini alur resetnya tetap ada, tapi tautannya dibuat manual oleh admin di `/admin/plans`. |
 | `EMAIL_FROM` | Alamat pengirim email. Default memakai alamat bersama milik Resend yang cukup untuk uji coba. |
 | `ADMIN_EMAIL` | Email akun yang boleh buka `/admin/plans` untuk mengaktifkan plan pelanggan. Selama kosong, kuota AI tidak dibatasi sama sekali — karena tanpa admin tidak ada yang bisa mengaktifkan siapa pun, jadi membatasi malah mengunci semua akun tanpa jalan keluar. |
+| `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Nomor WhatsApp bantuan dan konfirmasi pembayaran, format kode negara tanpa `+`. Default mengarah ke kontak Creator Studio. |
 
 ### Cara kerja pembayaran
 
@@ -112,14 +113,18 @@ itu alurnya:
 3. Kamu buka `/admin/plans`, masukkan email itu, klik **Aktifkan Pro**. Plannya
    langsung aktif 30 hari dan kuota AI-nya di-reset.
 
-Langganan tidak diperpanjang otomatis: setelah 30 hari plannya lewat masa aktif
-dan pelanggan perlu membayar lagi, lalu diaktifkan ulang dengan cara yang sama.
+Langganan tidak diperpanjang otomatis: setelah 30 hari plannya otomatis kembali
+ke Gratis dan pelanggan perlu membayar lagi, lalu diaktifkan ulang dengan cara yang sama.
 Halaman `/admin/plans` menampilkan siapa saja yang aktif beserta tanggal
 habisnya, jadi perpanjangan bisa dipantau dari situ.
 
 Link checkoutnya ada di `LYNK_CHECKOUT_URL` (`src/lib/billing.ts`) — bukan
 environment variable, karena itu tautan publik biasa. Ganti di situ kalau
 produknya dibuat ulang di lynk.id.
+
+Pelanggan dapat mengunduh seluruh datanya atau menghapus akun secara permanen
+dari halaman **Pengaturan**. Halaman `/privacy` dan `/terms` menjelaskan aturan
+privasi, layanan AI, pembayaran, dan pembatalan.
 
 ## Menjalankan secara lokal
 

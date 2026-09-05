@@ -8,12 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // Placeholder only, but it still has to resolve: the Prisma CLI validates
-  // this block, and naming a variable that might not exist fails every CLI
-  // command with P1012. Nothing actually connects through it — at runtime the
-  // pg driver adapter in src/lib/prisma.ts owns the connection, and the CLI
-  // takes its URLs from prisma.config.ts. Both pick whichever connection
-  // variable this deployment actually has.
   url      = env("DATABASE_URL")
 }
 
@@ -255,6 +249,17 @@ model AppSecret {
   key       String   @id
   value     String
   createdAt DateTime @default(now())
+}
+
+/// Durable fixed-window throttling. Keeping this in Postgres makes abuse
+/// protection work across every Vercel function instance, not just one process.
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(1)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
 }
 
 enum AiRole {

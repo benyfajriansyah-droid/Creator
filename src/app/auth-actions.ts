@@ -12,6 +12,7 @@ import {
 import { DEFAULT_ACCOUNT_SEED } from "@/lib/seed";
 import { consumeResetToken, createResetToken } from "@/lib/password-reset";
 import { isMailConfigured, sendMail } from "@/lib/mail";
+import { currentClientIdentifier, rateLimit } from "@/lib/rate-limit";
 
 export type AuthState = { error?: string };
 
@@ -23,15 +24,30 @@ function readCredentials(formData: FormData) {
   };
 }
 
+function redirectAfterAuth(formData: FormData): "/dashboard" | "/billing" {
+  return formData.get("redirectTo") === "/billing" ? "/billing" : "/dashboard";
+}
+
 export async function register(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
+  const throttle = await rateLimit("auth-register", await currentClientIdentifier(), {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return { error: "Terlalu banyak percobaan. Tunggu sekitar 15 menit lalu coba lagi." };
+  }
+
   const { email, password, name } = readCredentials(formData);
 
-  if (!name) return { error: "Nama wajib diisi." };
+  if (name.length < 2 || name.length > 80) return { error: "Nama harus 2–80 karakter." };
   if (!email.includes("@")) return { error: "Format email tidak valid." };
-  if (password.length < 8) return { error: "Password minimal 8 karakter." };
+  if (email.length > 254) return { error: "Email terlalu panjang." };
+  if (password.length < 8 || password.length > 128) {
+    return { error: "Password harus 8–128 karakter." };
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { error: "Email ini sudah terdaftar. Coba masuk saja." };
@@ -46,10 +62,18 @@ export async function register(
   });
 
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect(redirectAfterAuth(formData));
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const throttle = await rateLimit("auth-login", await currentClientIdentifier(), {
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return { error: "Terlalu banyak percobaan. Tunggu sekitar 15 menit lalu coba lagi." };
+  }
+
   const { email, password } = readCredentials(formData);
 
   const user = await prisma.user.findUnique({ where: { email } });
@@ -59,7 +83,7 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
   }
 
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect(redirectAfterAuth(formData));
 }
 
 export async function logout(): Promise<void> {
@@ -85,6 +109,12 @@ export async function requestPasswordReset(
   _prev: ResetRequestState,
   formData: FormData
 ): Promise<ResetRequestState> {
+  const throttle = await rateLimit("auth-reset", await currentClientIdentifier(), {
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!throttle.allowed) return { done: true };
+
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email.includes("@")) return { error: "Format email tidak valid." };
 

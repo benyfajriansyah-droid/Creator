@@ -19,11 +19,13 @@ export default function AuthForm({
   mode,
   action,
   justReset = false,
+  redirectTo,
 }: {
   mode: "login" | "register";
   action: (state: AuthState, formData: FormData) => Promise<AuthState>;
   /** Set after a successful password reset, so the redirect explains itself. */
   justReset?: boolean;
+  redirectTo?: "/billing";
 }) {
   const [state, formAction] = useActionState(action, {});
   const [showPassword, setShowPassword] = useState(false);
@@ -47,6 +49,7 @@ export default function AuthForm({
       )}
 
       <form action={formAction} className="space-y-4">
+        {redirectTo && <input type="hidden" name="redirectTo" value={redirectTo} />}
         {isRegister && (
           <Field label="Nama">
             <input
@@ -114,12 +117,24 @@ export default function AuthForm({
         )}
 
         <SubmitButton label={isRegister ? "Buat akun" : "Masuk"} />
+        {isRegister && (
+          <p className="text-center text-xs leading-5 text-[var(--text-subtle)]">
+            Dengan mendaftar, kamu menyetujui{" "}
+            <Link href="/terms" className="underline hover:text-[var(--text)]">
+              Syarat Penggunaan
+            </Link>{" "}
+            dan{" "}
+            <Link href="/privacy" className="underline hover:text-[var(--text)]">
+              Kebijakan Privasi
+            </Link>.
+          </p>
+        )}
       </form>
 
       <p className="mt-5 text-center text-sm text-[var(--text-muted)]">
         {isRegister ? "Sudah punya akun? " : "Belum punya akun? "}
         <Link
-          href={isRegister ? "/login" : "/register"}
+          href={`${isRegister ? "/login" : "/register"}${redirectTo ? "?next=/billing" : ""}`}
           className="font-medium text-[var(--accent)] hover:underline"
         >
           {isRegister ? "Masuk" : "Daftar"}

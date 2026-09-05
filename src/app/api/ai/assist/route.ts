@@ -7,7 +7,8 @@ import {
   streamAiMessage,
   textOf,
 } from "@/lib/ai";
-import { consumeAiQuota, getQuotaStatus } from "@/lib/billing";
+import { getQuotaStatus, releaseAiQuota, reserveAiQuota } from "@/lib/billing";
+import { clientIdentifier, rateLimit } from "@/lib/rate-limit";
 import { PLATFORM_LABEL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,17 @@ export async function POST(request: Request) {
     ? body.task
     : "hooks";
 
+  const throttle = await rateLimit("ai-assist", `${user.id}:${clientIdentifier(request.headers)}`, {
+    limit: 15,
+    windowMs: 60 * 1000,
+  });
+  if (!throttle.allowed) {
+    return NextResponse.json({ error: "Terlalu banyak permintaan AI. Coba lagi sebentar." }, {
+      status: 429,
+      headers: { "Retry-After": String(throttle.retryAfterSeconds) },
+    });
+  }
+
   const quota = await getQuotaStatus(user.id);
   if (quota.remaining <= 0) {
     return NextResponse.json(
@@ -57,6 +69,11 @@ export async function POST(request: Request) {
     include: { account: true },
   });
   if (!item) return NextResponse.json({ error: "Konten tidak ditemukan" }, { status: 404 });
+
+  const reservation = await reserveAiQuota(user.id);
+  if (!reservation.allowed) {
+    return NextResponse.json({ error: "Kuota AI bulan ini habis. Buka Billing buat lanjut." }, { status: 402 });
+  }
 
   const details = [
     `Judul: ${item.title}`,
@@ -87,15 +104,16 @@ export async function POST(request: Request) {
     const message = await stream.finalMessage();
 
     if (message.stop_reason === "refusal") {
+      await releaseAiQuota(user.id, reservation.charged);
       return NextResponse.json(
         { error: "Permintaan ini ditolak oleh filter keamanan." },
         { status: 422 }
       );
     }
 
-    await consumeAiQuota(user.id);
     return NextResponse.json({ text: textOf(message) });
   } catch (error) {
+    await releaseAiQuota(user.id, reservation.charged);
     console.error("AI assist failed", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Gagal menghubungi layanan AI" },
